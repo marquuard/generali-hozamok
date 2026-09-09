@@ -68,8 +68,7 @@
       width: min(900px, calc(100% - 24px));
       margin: 0 auto;
 
-      padding:
-        42px 0 60px;
+      padding: 42px 0 60px;
     }
 
     header {
@@ -104,8 +103,7 @@
     h1 {
       margin: 0;
 
-      font-size:
-        clamp(32px, 6vw, 50px);
+      font-size: clamp(32px, 6vw, 50px);
 
       line-height: 1.05;
 
@@ -115,8 +113,7 @@
     .subtitle {
       max-width: 680px;
 
-      margin:
-        15px 0 0;
+      margin: 15px 0 0;
 
       color: var(--muted);
 
@@ -129,8 +126,7 @@
 
       background: var(--surface);
 
-      border:
-        1px solid var(--border);
+      border: 1px solid var(--border);
 
       border-radius: var(--radius);
 
@@ -140,7 +136,7 @@
     .search-wrapper {
       position: relative;
 
-      margin-bottom: 14px;
+      margin-bottom: 10px;
     }
 
     .search-icon {
@@ -149,8 +145,7 @@
       left: 16px;
       top: 50%;
 
-      transform:
-        translateY(-50%);
+      transform: translateY(-50%);
 
       color: #89939d;
 
@@ -163,11 +158,9 @@
       width: 100%;
       height: 54px;
 
-      padding:
-        0 16px 0 44px;
+      padding: 0 46px 0 44px;
 
-      border:
-        1px solid var(--border);
+      border: 1px solid var(--border);
 
       border-radius: 14px;
 
@@ -191,15 +184,55 @@
         rgba(8, 127, 91, 0.08);
     }
 
+    #clearSearch {
+      position: absolute;
+
+      right: 12px;
+      top: 50%;
+
+      width: 30px;
+      height: 30px;
+
+      transform: translateY(-50%);
+
+      display: none;
+
+      align-items: center;
+      justify-content: center;
+
+      border: 0;
+      border-radius: 50%;
+
+      background: #eef1f3;
+      color: #68727d;
+
+      font-size: 18px;
+
+      cursor: pointer;
+    }
+
+    #clearSearch:hover {
+      background: #e2e7eb;
+    }
+
+    .search-info {
+      min-height: 18px;
+
+      margin:
+        0 3px 10px;
+
+      color: var(--muted);
+
+      font-size: 12px;
+    }
+
     #fundSelect {
       width: 100%;
       height: 58px;
 
-      padding:
-        0 16px;
+      padding: 0 16px;
 
-      border:
-        1px solid var(--border);
+      border: 1px solid var(--border);
 
       border-radius: 14px;
 
@@ -230,8 +263,7 @@
 
       background: var(--surface-soft);
 
-      border:
-        1px solid var(--border);
+      border: 1px solid var(--border);
 
       border-radius: 17px;
     }
@@ -251,8 +283,7 @@
     .fund-name {
       margin-bottom: 25px;
 
-      font-size:
-        clamp(20px, 4vw, 28px);
+      font-size: clamp(20px, 4vw, 28px);
 
       font-weight: 750;
 
@@ -264,8 +295,7 @@
       align-items: baseline;
       gap: 6px;
 
-      font-size:
-        clamp(52px, 12vw, 82px);
+      font-size: clamp(52px, 12vw, 82px);
 
       font-weight: 850;
 
@@ -299,13 +329,11 @@
     }
 
     .badge {
-      padding:
-        8px 11px;
+      padding: 8px 11px;
 
       background: #ffffff;
 
-      border:
-        1px solid var(--border);
+      border: 1px solid var(--border);
 
       border-radius: 999px;
 
@@ -352,16 +380,13 @@
       width: 15px;
       height: 15px;
 
-      border:
-        2px solid #dce1e5;
+      border: 2px solid #dce1e5;
 
-      border-top-color:
-        var(--green);
+      border-top-color: var(--green);
 
       border-radius: 50%;
 
-      animation:
-        spin 0.7s linear infinite;
+      animation: spin 0.7s linear infinite;
     }
 
     @keyframes spin {
@@ -388,8 +413,7 @@
 
     @media (max-width: 600px) {
       .container {
-        width:
-          calc(100% - 18px);
+        width: calc(100% - 18px);
 
         padding-top: 25px;
       }
@@ -441,12 +465,28 @@
         <input
           id="search"
           type="search"
-          placeholder="Eszközalap keresése..."
+          placeholder="Kezdj el gépelni..."
           autocomplete="off"
+          autocorrect="off"
+          spellcheck="false"
           aria-label="Eszközalap keresése"
         >
 
+        <button
+          id="clearSearch"
+          type="button"
+          aria-label="Keresés törlése"
+          title="Keresés törlése"
+        >
+          ×
+        </button>
+
       </div>
+
+      <div
+        id="searchInfo"
+        class="search-info"
+      ></div>
 
       <select
         id="fundSelect"
@@ -546,71 +586,109 @@
     let funds = [];
 
     const select =
-      document.getElementById(
-        "fundSelect"
-      );
+      document.getElementById("fundSelect");
 
     const search =
-      document.getElementById(
-        "search"
-      );
+      document.getElementById("search");
+
+    const clearSearch =
+      document.getElementById("clearSearch");
+
+    const searchInfo =
+      document.getElementById("searchInfo");
 
     const result =
-      document.getElementById(
-        "result"
-      );
+      document.getElementById("result");
 
     const fundName =
-      document.getElementById(
-        "fundName"
-      );
+      document.getElementById("fundName");
 
     const value =
-      document.getElementById(
-        "value"
-      );
+      document.getElementById("value");
 
     const returnValue =
-      document.getElementById(
-        "returnValue"
-      );
+      document.getElementById("returnValue");
 
     const status =
-      document.getElementById(
-        "status"
-      );
+      document.getElementById("status");
 
     const dateBadge =
-      document.getElementById(
-        "dateBadge"
-      );
+      document.getElementById("dateBadge");
 
+
+    /*
+     * Magyar ékezetek eltávolítása.
+     *
+     * Így például:
+     *
+     * "kötvény" → "kotveny"
+     * "részvény" → "reszveny"
+     * "fejlett" → "fejlett"
+     *
+     * Ez biztosítja, hogy ékezet nélkül is
+     * lehessen keresni.
+     */
+    function normalizeText(text) {
+
+      return String(text || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLocaleLowerCase("hu-HU")
+        .trim();
+
+    }
+
+
+    /*
+     * A keresési kifejezést is megtisztítjuk.
+     *
+     * Több egymás utáni szóközt egyetlen szóközzé
+     * alakítunk.
+     */
+    function normalizeQuery(text) {
+
+      return normalizeText(text)
+        .replace(/\s+/g, " ");
+
+    }
+
+
+    /*
+     * A találati lista kirajzolása.
+     */
     function renderSelect(list) {
 
       select.innerHTML = "";
 
       const placeholder =
-        document.createElement(
-          "option"
-        );
+        document.createElement("option");
 
       placeholder.value = "";
 
-      placeholder.textContent =
-        list.length === 0
-          ? "Nincs találat"
-          : "Válassz eszközalapot...";
+      if (list.length === 0) {
 
-      select.appendChild(
-        placeholder
-      );
+        placeholder.textContent =
+          "Nincs találat";
+
+      } else if (list.length === 1) {
+
+        placeholder.textContent =
+          "1 találat";
+
+      } else {
+
+        placeholder.textContent =
+          "Válassz eszközalapot...";
+
+      }
+
+      select.appendChild(placeholder);
+
 
       for (const fund of list) {
 
         const option =
-          document.createElement(
-            "option"
-          );
+          document.createElement("option");
 
         option.value =
           fund.id;
@@ -618,48 +696,72 @@
         option.textContent =
           fund.name;
 
-        select.appendChild(
-          option
-        );
+        select.appendChild(option);
+
       }
+
     }
 
+
+    /*
+     * Egy konkrét eszközalap adatainak megjelenítése.
+     */
     function showFund(fund) {
 
       if (!fund) {
 
-        result.classList.remove(
-          "visible"
-        );
+        result.classList.remove("visible");
 
         return;
+
       }
+
 
       fundName.textContent =
         fund.name;
 
-      const numericValue =
-        Number(fund.ytd);
 
-      value.textContent =
-        numericValue.toLocaleString(
-          "hu-HU",
-          {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-          }
+      const numericValue =
+        Number(
+          String(fund.ytd)
+            .replace(",", ".")
         );
+
+
+      if (!Number.isFinite(numericValue)) {
+
+        value.textContent = "–";
+
+      } else {
+
+        value.textContent =
+          numericValue.toLocaleString(
+            "hu-HU",
+            {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            }
+          );
+
+      }
+
 
       returnValue.classList.remove(
         "positive",
         "negative"
       );
 
-      returnValue.classList.add(
-        numericValue >= 0
-          ? "positive"
-          : "negative"
-      );
+
+      if (Number.isFinite(numericValue)) {
+
+        returnValue.classList.add(
+          numericValue >= 0
+            ? "positive"
+            : "negative"
+        );
+
+      }
+
 
       if (fund.date) {
 
@@ -670,13 +772,224 @@
 
         dateBadge.textContent =
           "Legfrissebb elérhető adat";
+
       }
 
-      result.classList.add(
-        "visible"
-      );
+
+      result.classList.add("visible");
+
     }
 
+
+    /*
+     * A keresés feldolgozása.
+     *
+     * FONTOS:
+     * Ez minden egyes billentyűleütés után lefut.
+     * Nem kell Entert nyomni.
+     */
+    function applySearch() {
+
+      const query =
+        normalizeQuery(search.value);
+
+
+      /*
+       * Keresés törlése gomb láthatósága.
+       */
+      clearSearch.style.display =
+        query
+          ? "flex"
+          : "none";
+
+
+      /*
+       * Ha nincs keresési kifejezés,
+       * minden alap megjelenik.
+       */
+      if (!query) {
+
+        renderSelect(funds);
+
+        searchInfo.textContent =
+          funds.length +
+          " eszközalap";
+
+        result.classList.remove(
+          "visible"
+        );
+
+        return;
+
+      }
+
+
+      /*
+       * A név normalizált változatában keresünk.
+       *
+       * Példa:
+       *
+       * keresés: "kotveny"
+       *
+       * név: "Hazai kötvény"
+       *
+       * mindkettőből:
+       *
+       * "kotveny"
+       *
+       * lesz.
+       */
+      const filtered =
+        funds.filter(
+          function (fund) {
+
+            const name =
+              normalizeText(fund.name);
+
+            return name.includes(query);
+
+          }
+        );
+
+
+      renderSelect(filtered);
+
+
+      if (filtered.length === 0) {
+
+        searchInfo.textContent =
+          "Nincs találat.";
+
+        result.classList.remove(
+          "visible"
+        );
+
+        return;
+
+      }
+
+
+      if (filtered.length === 1) {
+
+        searchInfo.textContent =
+          "1 találat";
+
+        /*
+         * Ha pontosan egy találat maradt,
+         * automatikusan kiválasztjuk.
+         */
+        select.value =
+          filtered[0].id;
+
+        showFund(filtered[0]);
+
+        return;
+
+      }
+
+
+      searchInfo.textContent =
+        filtered.length +
+        " találat";
+
+
+      /*
+       * Több találat esetén a felhasználó
+       * kiválaszthatja a megfelelőt.
+       */
+      result.classList.remove(
+        "visible"
+      );
+
+    }
+
+
+    /*
+     * A selectben kiválasztott alap megjelenítése.
+     */
+    select.addEventListener(
+      "change",
+      function () {
+
+        const id =
+          select.value;
+
+
+        if (!id) {
+
+          showFund(null);
+
+          return;
+
+        }
+
+
+        const fund =
+          funds.find(
+            function (item) {
+
+              return item.id === id;
+
+            }
+          );
+
+
+        showFund(fund);
+
+      }
+    );
+
+
+    /*
+     * KERESÉS GÉPELÉS KÖZBEN.
+     *
+     * Ez a legfontosabb rész.
+     */
+    search.addEventListener(
+      "input",
+      applySearch
+    );
+
+
+    /*
+     * Keresés törlése.
+     */
+    clearSearch.addEventListener(
+      "click",
+      function () {
+
+        search.value = "";
+
+        applySearch();
+
+        search.focus();
+
+      }
+    );
+
+
+    /*
+     * Escape billentyűvel is törölhető a keresés.
+     */
+    search.addEventListener(
+      "keydown",
+      function (event) {
+
+        if (event.key === "Escape") {
+
+          search.value = "";
+
+          applySearch();
+
+        }
+
+      }
+    );
+
+
+    /*
+     * Adatok betöltése a funds.json fájlból.
+     */
     async function loadFunds() {
 
       try {
@@ -690,103 +1003,109 @@
             }
           );
 
+
         if (!response.ok) {
+
           throw new Error(
             "A funds.json nem tölthető be."
           );
+
         }
+
 
         const data =
           await response.json();
 
+
         if (!Array.isArray(data)) {
+
           throw new Error(
             "A funds.json formátuma hibás."
           );
+
         }
 
-        funds = data;
 
+        /*
+         * Csak valóban használható rekordokat
+         * tartunk meg.
+         */
+        funds =
+          data.filter(
+            function (fund) {
+
+              return (
+                fund &&
+                fund.id &&
+                fund.name &&
+                fund.ytd !== undefined &&
+                fund.ytd !== null
+              );
+
+            }
+          );
+
+
+        /*
+         * ABC szerinti rendezés.
+         */
+        funds.sort(
+          function (a, b) {
+
+            return a.name.localeCompare(
+              b.name,
+              "hu"
+            );
+
+          }
+        );
+
+
+        /*
+         * Kezdetben minden alap látható.
+         */
         renderSelect(funds);
 
-        status.textContent =
+
+        searchInfo.textContent =
           funds.length +
-          " eszközalap betöltve.";
+          " eszközalap";
+
+
+        status.textContent =
+          "Az adatok frissítve.";
+
 
       } catch (error) {
 
         console.error(error);
+
 
         select.innerHTML =
           "<option value=\"\">" +
           "Az adatok nem tölthetők be" +
           "</option>";
 
+
+        searchInfo.textContent = "";
+
+
         status.innerHTML =
           '<div class="error">' +
           "Nem sikerült betölteni az adatokat. " +
           "Próbáld újratölteni az oldalt később." +
           "</div>";
+
       }
+
     }
 
-    search.addEventListener(
-      "input",
-      function () {
 
-        const query =
-          search.value
-            .trim()
-            .toLocaleLowerCase(
-              "hu-HU"
-            );
-
-        const filtered =
-          funds.filter(
-            function (fund) {
-
-              return fund.name
-                .toLocaleLowerCase(
-                  "hu-HU"
-                )
-                .includes(query);
-            }
-          );
-
-        renderSelect(filtered);
-
-        result.classList.remove(
-          "visible"
-        );
-      }
-    );
-
-    select.addEventListener(
-      "change",
-      function () {
-
-        const id =
-          select.value;
-
-        if (!id) {
-
-          showFund(null);
-
-          return;
-        }
-
-        const fund =
-          funds.find(
-            function (item) {
-              return item.id === id;
-            }
-          );
-
-        showFund(fund);
-      }
-    );
-
+    /*
+     * Indítás.
+     */
     loadFunds();
+
   </script>
 
 </body>
