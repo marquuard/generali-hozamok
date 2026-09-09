@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="hu">
 <head>
@@ -15,6 +16,19 @@
 
   <title>Generali eszközalapok – YTD hozam</title>
 
+  <script>
+    // A mentett téma az oldal megjelenése előtt betöltődik,
+    // így nem villan fel a világos mód sötét mód helyett.
+    (function () {
+      const savedTheme =
+        localStorage.getItem("generali-theme");
+
+      if (savedTheme === "dark") {
+        document.documentElement.classList.add("dark");
+      }
+    })();
+  </script>
+
   <style>
 
     * {
@@ -26,6 +40,10 @@
       margin: 0;
       padding: 0;
       min-height: 100%;
+    }
+
+    html {
+      background: #f4f7fb;
     }
 
     body {
@@ -46,11 +64,141 @@
         );
 
       color: #172033;
+
+      transition:
+        background 0.25s ease,
+        color 0.25s ease;
     }
+
+
+    /* ======================================================
+       DARK MODE
+       ====================================================== */
+
+    html.dark {
+      background: #0f172a;
+    }
+
+    html.dark body {
+      background:
+        linear-gradient(
+          180deg,
+          #0f172a 0%,
+          #111827 100%
+        );
+
+      color: #e5e7eb;
+    }
+
+    html.dark .eyebrow {
+      color: #94a3b8;
+    }
+
+    html.dark .subtitle {
+      color: #94a3b8;
+    }
+
+    html.dark .card {
+      background: #1e293b;
+
+      border-color: #334155;
+
+      box-shadow:
+        0 12px 35px rgba(0, 0, 0, 0.28);
+    }
+
+    html.dark .controls {
+      border-color: #334155;
+    }
+
+    html.dark #search {
+      background: #0f172a;
+
+      border-color: #475569;
+
+      color: #e5e7eb;
+    }
+
+    html.dark #search::placeholder {
+      color: #64748b;
+    }
+
+    html.dark #search:focus {
+      border-color: #94a3b8;
+
+      box-shadow:
+        0 0 0 3px rgba(148, 163, 184, 0.12);
+    }
+
+    html.dark .search-icon {
+      color: #64748b;
+    }
+
+    html.dark #clearSearch {
+      color: #94a3b8;
+    }
+
+    html.dark #clearSearch:hover {
+      background: #334155;
+    }
+
+    html.dark .search-info {
+      color: #94a3b8;
+    }
+
+    html.dark #fundSelect {
+      background: #0f172a;
+
+      border-color: #475569;
+
+      color: #e5e7eb;
+    }
+
+    html.dark #fundSelect:focus {
+      border-color: #94a3b8;
+
+      box-shadow:
+        0 0 0 3px rgba(148, 163, 184, 0.12);
+    }
+
+    html.dark .result-label {
+      color: #94a3b8;
+    }
+
+    html.dark #value {
+      color: #94a3b8;
+    }
+
+    html.dark .date {
+      background: #334155;
+
+      color: #cbd5e1;
+    }
+
+    html.dark .footer {
+      color: #64748b;
+    }
+
+    html.dark .empty {
+      color: #94a3b8;
+    }
+
+    html.dark .error {
+      background: #450a0a;
+
+      color: #fecaca;
+    }
+
+
+    /* ======================================================
+       OLDAL
+       ====================================================== */
 
     .page {
       width: min(760px, calc(100% - 32px));
+
       margin: 0 auto;
+
       padding: 48px 0 64px;
     }
 
@@ -68,6 +216,9 @@
       text-transform: uppercase;
 
       color: #64748b;
+
+      transition:
+        color 0.25s ease;
     }
 
     h1 {
@@ -86,6 +237,9 @@
 
       font-size: 16px;
       line-height: 1.6;
+
+      transition:
+        color 0.25s ease;
     }
 
     .card {
@@ -98,11 +252,20 @@
         0 12px 35px rgba(15, 23, 42, 0.08);
 
       overflow: hidden;
+
+      transition:
+        background 0.25s ease,
+        border-color 0.25s ease,
+        box-shadow 0.25s ease;
     }
 
     .controls {
       padding: 22px;
+
       border-bottom: 1px solid #e2e8f0;
+
+      transition:
+        border-color 0.25s ease;
     }
 
     .search-wrapper {
@@ -116,7 +279,7 @@
 
       padding:
         0 48px
-        0 16px;
+        0 44px;
 
       border: 1px solid #cbd5e1;
       border-radius: 12px;
@@ -130,6 +293,8 @@
       outline: none;
 
       transition:
+        background 0.25s ease,
+        color 0.25s ease,
         border-color 0.15s ease,
         box-shadow 0.15s ease;
     }
@@ -179,6 +344,10 @@
       cursor: pointer;
 
       display: none;
+
+      transition:
+        background 0.2s ease,
+        color 0.2s ease;
     }
 
     #clearSearch:hover {
@@ -211,8 +380,7 @@
 
       margin-top: 16px;
 
-      padding:
-        0 14px;
+      padding: 0 14px;
 
       border: 1px solid #cbd5e1;
       border-radius: 12px;
@@ -226,6 +394,12 @@
       outline: none;
 
       cursor: pointer;
+
+      transition:
+        background 0.25s ease,
+        color 0.25s ease,
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
     }
 
     #fundSelect:focus {
@@ -292,6 +466,10 @@
       letter-spacing: -0.03em;
     }
 
+    html.dark #returnValue.no-data {
+      color: #94a3b8;
+    }
+
     #value {
       display: block;
 
@@ -301,6 +479,9 @@
 
       font-size: 14px;
       font-weight: 500;
+
+      transition:
+        color 0.25s ease;
     }
 
     .date {
@@ -322,6 +503,10 @@
 
       font-size: 12px;
       font-weight: 600;
+
+      transition:
+        background 0.25s ease,
+        color 0.25s ease;
     }
 
     .footer {
@@ -355,6 +540,109 @@
       text-align: center;
     }
 
+
+    /* ======================================================
+       TÉMAKAPCSOLÓ
+       ====================================================== */
+
+    #themeToggle {
+      position: fixed;
+
+      right: 18px;
+      bottom: 18px;
+
+      width: 46px;
+      height: 46px;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      border: 1px solid #cbd5e1;
+      border-radius: 50%;
+
+      background: rgba(255, 255, 255, 0.94);
+
+      color: #334155;
+
+      box-shadow:
+        0 5px 18px rgba(15, 23, 42, 0.14);
+
+      cursor: pointer;
+
+      z-index: 1000;
+
+      backdrop-filter: blur(8px);
+
+      -webkit-backdrop-filter: blur(8px);
+
+      transition:
+        background 0.25s ease,
+        color 0.25s ease,
+        border-color 0.25s ease,
+        box-shadow 0.25s ease,
+        transform 0.15s ease;
+    }
+
+    #themeToggle:hover {
+      transform: translateY(-2px);
+
+      box-shadow:
+        0 8px 22px rgba(15, 23, 42, 0.18);
+    }
+
+    #themeToggle:active {
+      transform: translateY(0);
+    }
+
+    #themeToggle:focus-visible {
+      outline: 3px solid rgba(100, 116, 139, 0.3);
+
+      outline-offset: 3px;
+    }
+
+    html.dark #themeToggle {
+      background: rgba(30, 41, 59, 0.94);
+
+      border-color: #475569;
+
+      color: #f8fafc;
+
+      box-shadow:
+        0 5px 18px rgba(0, 0, 0, 0.35);
+    }
+
+    .theme-icon {
+      width: 21px;
+      height: 21px;
+
+      display: block;
+
+      fill: currentColor;
+    }
+
+    .sun-icon {
+      display: block;
+    }
+
+    .moon-icon {
+      display: none;
+    }
+
+    html.dark .sun-icon {
+      display: none;
+    }
+
+    html.dark .moon-icon {
+      display: block;
+    }
+
+
+    /* ======================================================
+       MOBIL
+       ====================================================== */
+
     @media (max-width: 560px) {
 
       .page {
@@ -364,6 +652,7 @@
         );
 
         padding-top: 28px;
+        padding-bottom: 80px;
       }
 
       .controls {
@@ -378,8 +667,18 @@
 
       .search-info {
         align-items: flex-start;
+
         flex-direction: column;
       }
+
+      #themeToggle {
+        right: 14px;
+        bottom: 14px;
+
+        width: 44px;
+        height: 44px;
+      }
+
     }
 
   </style>
@@ -508,7 +807,144 @@
   </main>
 
 
+  <!-- ======================================================
+       TÉMAKAPCSOLÓ
+       ====================================================== -->
+
+  <button
+    id="themeToggle"
+    type="button"
+    aria-label="Sötét mód bekapcsolása"
+    title="Sötét mód"
+  >
+
+    <!-- Nap ikon – világos módban látható -->
+    <svg
+      class="theme-icon sun-icon"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <path d="
+        M12 4V2
+        M12 22V20
+        M4 12H2
+        M22 12H20
+        M5.64 5.64L4.22 4.22
+        M19.78 19.78L18.36 18.36
+        M5.64 18.36L4.22 19.78
+        M19.78 4.22L18.36 5.64
+        M12 17
+        A5 5 0 1 0 12 7
+        A5 5 0 0 0 12 17
+      "
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.8"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      />
+    </svg>
+
+    <!-- Hold ikon – sötét módban látható -->
+    <svg
+      class="theme-icon moon-icon"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <path
+        d="
+          M20.5 14.5
+          A8.5 8.5 0 0 1
+          9.5 3.5
+          A8.5 8.5 0 1 0
+          20.5 14.5
+          Z
+        "
+      />
+    </svg>
+
+  </button>
+
+
   <script>
+
+    /* ======================================================
+       TÉMA
+       ====================================================== */
+
+    const themeToggle =
+      document.getElementById(
+        "themeToggle"
+      );
+
+
+    function updateThemeButton() {
+
+      const isDark =
+        document.documentElement
+          .classList
+          .contains("dark");
+
+
+      if (isDark) {
+
+        themeToggle.setAttribute(
+          "aria-label",
+          "Világos mód bekapcsolása"
+        );
+
+        themeToggle.setAttribute(
+          "title",
+          "Világos mód"
+        );
+
+      } else {
+
+        themeToggle.setAttribute(
+          "aria-label",
+          "Sötét mód bekapcsolása"
+        );
+
+        themeToggle.setAttribute(
+          "title",
+          "Sötét mód"
+        );
+
+      }
+
+    }
+
+
+    themeToggle.addEventListener(
+      "click",
+      () => {
+
+        const isDark =
+          document.documentElement
+            .classList
+            .toggle("dark");
+
+
+        localStorage.setItem(
+          "generali-theme",
+          isDark
+            ? "dark"
+            : "light"
+        );
+
+
+        updateThemeButton();
+
+      }
+    );
+
+
+    updateThemeButton();
+
+
+    /* ======================================================
+       ESZKÖZALAPOK
+       ====================================================== */
 
     const searchInput =
       document.getElementById("search");
