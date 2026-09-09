@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Generali eszközalap hozamok</title>
+
+  <meta
+    name="description"
+    content="Generali eszközalapok év elejétől számított hozamai"
+  >
+
+  <style>
+    :root {
+      --background: #f4f6f8;
+      --surface: #ffffff;
+      --surface-soft: #f8fafb;
+
+      --text: #17202a;
+      --muted: #68727d;
+
+      --border: #e2e7eb;
+
+      --green: #087f5b;
+      --green-soft: #e8f7f1;
+
+      --red: #c92a2a;
+      --red-soft: #fff0f0;
+
+      --shadow:
+        0 15px 45px rgba(20, 30, 40, 0.08);
+
+      --radius: 20px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+
+      background: var(--background);
+      color: var(--text);
+
+      font-family:
+        Inter,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
+    }
+
+    .container {
+      width: min(900px, calc(100% - 24px));
+      margin: 0 auto;
+
+      padding:
+        42px 0 60px;
+    }
+
+    header {
+      margin-bottom: 28px;
+    }
+
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      margin-bottom: 12px;
+
+      color: var(--green);
+
+      font-size: 12px;
+      font-weight: 800;
+
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow-dot {
+      width: 8px;
+      height: 8px;
+
+      border-radius: 50%;
+
+      background: var(--green);
+    }
+
+    h1 {
+      margin: 0;
+
+      font-size:
+        clamp(32px, 6vw, 50px);
+
+      line-height: 1.05;
+
+      letter-spacing: -0.045em;
+    }
+
+    .subtitle {
+      max-width: 680px;
+
+      margin:
+        15px 0 0;
+
+      color: var(--muted);
+
+      font-size: 16px;
+      line-height: 1.65;
+    }
+
+    .card {
+      padding: 22px;
+
+      background: var(--surface);
+
+      border:
+        1px solid var(--border);
+
+      border-radius: var(--radius);
+
+      box-shadow: var(--shadow);
+    }
+
+    .search-wrapper {
+      position: relative;
+
+      margin-bottom: 14px;
+    }
+
+    .search-icon {
+      position: absolute;
+
+      left: 16px;
+      top: 50%;
+
+      transform:
+        translateY(-50%);
+
+      color: #89939d;
+
+      font-size: 20px;
+
+      pointer-events: none;
+    }
+
+    #search {
+      width: 100%;
+      height: 54px;
+
+      padding:
+        0 16px 0 44px;
+
+      border:
+        1px solid var(--border);
+
+      border-radius: 14px;
+
+      outline: none;
+
+      background: #ffffff;
+      color: var(--text);
+
+      font-size: 15px;
+
+      transition:
+        border-color 0.2s,
+        box-shadow 0.2s;
+    }
+
+    #search:focus {
+      border-color: var(--green);
+
+      box-shadow:
+        0 0 0 4px
+        rgba(8, 127, 91, 0.08);
+    }
+
+    #fundSelect {
+      width: 100%;
+      height: 58px;
+
+      padding:
+        0 16px;
+
+      border:
+        1px solid var(--border);
+
+      border-radius: 14px;
+
+      outline: none;
+
+      background: #ffffff;
+      color: var(--text);
+
+      font-size: 16px;
+
+      cursor: pointer;
+    }
+
+    #fundSelect:focus {
+      border-color: var(--green);
+
+      box-shadow:
+        0 0 0 4px
+        rgba(8, 127, 91, 0.08);
+    }
+
+    .result {
+      display: none;
+
+      margin-top: 18px;
+
+      padding: 28px;
+
+      background: var(--surface-soft);
+
+      border:
+        1px solid var(--border);
+
+      border-radius: 17px;
+    }
+
+    .result.visible {
+      display: block;
+    }
+
+    .result-label {
+      margin-bottom: 8px;
+
+      color: var(--muted);
+
+      font-size: 13px;
+    }
+
+    .fund-name {
+      margin-bottom: 25px;
+
+      font-size:
+        clamp(20px, 4vw, 28px);
+
+      font-weight: 750;
+
+      line-height: 1.25;
+    }
+
+    .return {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+
+      font-size:
+        clamp(52px, 12vw, 82px);
+
+      font-weight: 850;
+
+      letter-spacing: -0.055em;
+
+      line-height: 1;
+    }
+
+    .return.positive {
+      color: var(--green);
+    }
+
+    .return.negative {
+      color: var(--red);
+    }
+
+    .percent {
+      font-size: 0.48em;
+
+      letter-spacing: -0.02em;
+    }
+
+    .meta {
+      display: flex;
+
+      flex-wrap: wrap;
+
+      gap: 8px;
+
+      margin-top: 25px;
+    }
+
+    .badge {
+      padding:
+        8px 11px;
+
+      background: #ffffff;
+
+      border:
+        1px solid var(--border);
+
+      border-radius: 999px;
+
+      color: var(--muted);
+
+      font-size: 12px;
+    }
+
+    .status {
+      min-height: 18px;
+
+      margin-top: 15px;
+
+      color: var(--muted);
+
+      font-size: 12px;
+
+      text-align: center;
+    }
+
+    .error {
+      padding: 15px;
+
+      border-radius: 12px;
+
+      background: var(--red-soft);
+
+      color: var(--red);
+
+      line-height: 1.5;
+
+      text-align: left;
+    }
+
+    .loading {
+      display: inline-flex;
+
+      align-items: center;
+
+      gap: 8px;
+    }
+
+    .spinner {
+      width: 15px;
+      height: 15px;
+
+      border:
+        2px solid #dce1e5;
+
+      border-top-color:
+        var(--green);
+
+      border-radius: 50%;
+
+      animation:
+        spin 0.7s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    footer {
+      margin-top: 22px;
+
+      color: var(--muted);
+
+      font-size: 11px;
+
+      line-height: 1.6;
+
+      text-align: center;
+    }
+
+    footer a {
+      color: inherit;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        width:
+          calc(100% - 18px);
+
+        padding-top: 25px;
+      }
+
+      .card {
+        padding: 15px;
+
+        border-radius: 17px;
+      }
+
+      .result {
+        padding: 21px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <main class="container">
+
+    <header>
+
+      <div class="eyebrow">
+        <span class="eyebrow-dot"></span>
+        Befektetések
+      </div>
+
+      <h1>
+        Eszközalap hozamok
+      </h1>
+
+      <p class="subtitle">
+        Válassz ki egy Generali eszközalapot,
+        és nézd meg az év elejétől számított,
+        nem évesített hozamát.
+      </p>
+
+    </header>
+
+    <section class="card">
+
+      <div class="search-wrapper">
+
+        <span class="search-icon">
+          ⌕
+        </span>
+
+        <input
+          id="search"
+          type="search"
+          placeholder="Eszközalap keresése..."
+          autocomplete="off"
+          aria-label="Eszközalap keresése"
+        >
+
+      </div>
+
+      <select
+        id="fundSelect"
+        aria-label="Eszközalap kiválasztása"
+      >
+        <option value="">
+          Adatok betöltése...
+        </option>
+      </select>
+
+      <div
+        id="result"
+        class="result"
+      >
+
+        <div class="result-label">
+          Év elejétől számított hozam
+        </div>
+
+        <div
+          id="fundName"
+          class="fund-name"
+        ></div>
+
+        <div
+          id="returnValue"
+          class="return"
+        >
+
+          <span id="value">
+            –
+          </span>
+
+          <span class="percent">
+            %
+          </span>
+
+        </div>
+
+        <div class="meta">
+
+          <span class="badge">
+            Nem évesített hozam
+          </span>
+
+          <span
+            id="dateBadge"
+            class="badge"
+          ></span>
+
+        </div>
+
+      </div>
+
+      <div
+        id="status"
+        class="status"
+      >
+
+        <span class="loading">
+
+          <span class="spinner"></span>
+
+          Adatok betöltése...
+
+        </span>
+
+      </div>
+
+    </section>
+
+    <footer>
+
+      Az adatok a Generali Biztosító
+      hivatalos oldalairól származnak.
+
+      A múltbeli teljesítmény nem jelent
+      garanciát a jövőbeni teljesítményre.
+
+      <br>
+
+      <a
+        href="https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink.aspx"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Generali – Eszközalapjaink
+      </a>
+
+    </footer>
+
+  </main>
+
+  <script>
+    "use strict";
+
+    let funds = [];
+
+    const select =
+      document.getElementById(
+        "fundSelect"
+      );
+
+    const search =
+      document.getElementById(
+        "search"
+      );
+
+    const result =
+      document.getElementById(
+        "result"
+      );
+
+    const fundName =
+      document.getElementById(
+        "fundName"
+      );
+
+    const value =
+      document.getElementById(
+        "value"
+      );
+
+    const returnValue =
+      document.getElementById(
+        "returnValue"
+      );
+
+    const status =
+      document.getElementById(
+        "status"
+      );
+
+    const dateBadge =
+      document.getElementById(
+        "dateBadge"
+      );
+
+    function renderSelect(list) {
+
+      select.innerHTML = "";
+
+      const placeholder =
+        document.createElement(
+          "option"
+        );
+
+      placeholder.value = "";
+
+      placeholder.textContent =
+        list.length === 0
+          ? "Nincs találat"
+          : "Válassz eszközalapot...";
+
+      select.appendChild(
+        placeholder
+      );
+
+      for (const fund of list) {
+
+        const option =
+          document.createElement(
+            "option"
+          );
+
+        option.value =
+          fund.id;
+
+        option.textContent =
+          fund.name;
+
+        select.appendChild(
+          option
+        );
+      }
+    }
+
+    function showFund(fund) {
+
+      if (!fund) {
+
+        result.classList.remove(
+          "visible"
+        );
+
+        return;
+      }
+
+      fundName.textContent =
+        fund.name;
+
+      const numericValue =
+        Number(fund.ytd);
+
+      value.textContent =
+        numericValue.toLocaleString(
+          "hu-HU",
+          {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          }
+        );
+
+      returnValue.classList.remove(
+        "positive",
+        "negative"
+      );
+
+      returnValue.classList.add(
+        numericValue >= 0
+          ? "positive"
+          : "negative"
+      );
+
+      if (fund.date) {
+
+        dateBadge.textContent =
+          "Adat: " + fund.date;
+
+      } else {
+
+        dateBadge.textContent =
+          "Legfrissebb elérhető adat";
+      }
+
+      result.classList.add(
+        "visible"
+      );
+    }
+
+    async function loadFunds() {
+
+      try {
+
+        const response =
+          await fetch(
+            "./funds.json?v=" +
+            Date.now(),
+            {
+              cache: "no-store"
+            }
+          );
+
+        if (!response.ok) {
+          throw new Error(
+            "A funds.json nem tölthető be."
+          );
+        }
+
+        const data =
+          await response.json();
+
+        if (!Array.isArray(data)) {
+          throw new Error(
+            "A funds.json formátuma hibás."
+          );
+        }
+
+        funds = data;
+
+        renderSelect(funds);
+
+        status.textContent =
+          funds.length +
+          " eszközalap betöltve.";
+
+      } catch (error) {
+
+        console.error(error);
+
+        select.innerHTML =
+          "<option value=\"\">" +
+          "Az adatok nem tölthetők be" +
+          "</option>";
+
+        status.innerHTML =
+          '<div class="error">' +
+          "Nem sikerült betölteni az adatokat. " +
+          "Próbáld újratölteni az oldalt később." +
+          "</div>";
+      }
+    }
+
+    search.addEventListener(
+      "input",
+      function () {
+
+        const query =
+          search.value
+            .trim()
+            .toLocaleLowerCase(
+              "hu-HU"
+            );
+
+        const filtered =
+          funds.filter(
+            function (fund) {
+
+              return fund.name
+                .toLocaleLowerCase(
+                  "hu-HU"
+                )
+                .includes(query);
+            }
+          );
+
+        renderSelect(filtered);
+
+        result.classList.remove(
+          "visible"
+        );
+      }
+    );
+
+    select.addEventListener(
+      "change",
+      function () {
+
+        const id =
+          select.value;
+
+        if (!id) {
+
+          showFund(null);
+
+          return;
+        }
+
+        const fund =
+          funds.find(
+            function (item) {
+              return item.id === id;
+            }
+          );
+
+        showFund(fund);
+      }
+    );
+
+    loadFunds();
+  </script>
+
+</body>
+</html>
