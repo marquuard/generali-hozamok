@@ -4,11 +4,19 @@ on:
   workflow_dispatch:
 
   schedule:
+    # Napi 3 automatikus futás
+    # 06:15 UTC
+    # 14:15 UTC
+    # 22:15 UTC
     - cron: "15 6 * * *"
+    - cron: "15 14 * * *"
+    - cron: "15 22 * * *"
 
   push:
     branches:
       - main
+    paths-ignore:
+      - "funds.json"
 
 permissions:
   contents: write
@@ -27,22 +35,43 @@ jobs:
 
     steps:
 
+      # ======================================================
+      # Repository letöltése
+      # ======================================================
+
       - name: Repository letöltése
         uses: actions/checkout@v4
+
+
+      # ======================================================
+      # Python
+      # ======================================================
 
       - name: Python beállítása
         uses: actions/setup-python@v5
         with:
           python-version: "3.x"
 
+
+      # ======================================================
+      # Generali adatok lekérése
+      # ======================================================
+
       - name: Generali adatok lekérése
         run: |
           python scraper.py
+
+
+      # ======================================================
+      # funds.json ellenőrzése
+      # ======================================================
 
       - name: Adatok ellenőrzése
         run: |
           python - <<'PY'
           import json
+
+          EXPECTED_FUNDS = 18
 
           with open(
               "funds.json",
@@ -61,12 +90,21 @@ jobs:
                   "A funds.json üres."
               )
 
+          if len(data) != EXPECTED_FUNDS:
+              raise SystemExit(
+                  f"Hibás eszközalap-darabszám: "
+                  f"{len(data)}. "
+                  f"Elvárt: {EXPECTED_FUNDS}."
+              )
+
           required = {
               "id",
               "name",
               "ytd",
               "url"
           }
+
+          no_ytd = []
 
           for index, fund in enumerate(data):
 
@@ -81,20 +119,58 @@ jobs:
                       f"{missing}"
                   )
 
-              if not isinstance(
-                  fund["ytd"],
+              # A YTD lehet:
+              # - int
+              # - float
+              # - null
+              #
+              # A null azt jelenti, hogy a Generali
+              # jelenleg nem közöl YTD adatot az alaphoz.
+
+              ytd = fund["ytd"]
+
+              if ytd is not None and not isinstance(
+                  ytd,
                   (int, float)
               ):
                   raise SystemExit(
                       f"Hibás YTD érték: "
-                      f"{fund['name']}"
+                      f"{fund['name']}: "
+                      f"{ytd!r}"
+                  )
+
+              if ytd is None:
+                  no_ytd.append(
+                      fund["name"]
                   )
 
           print(
               f"Érvényes eszközalapok: "
               f"{len(data)}"
           )
+
+          if no_ytd:
+              print()
+              print(
+                  "YTD adattal jelenleg nem rendelkező "
+                  "eszközalap(ok):"
+              )
+
+              for name in no_ytd:
+                  print(
+                      f"  - {name}"
+                  )
+
+          print()
+          print(
+              "A funds.json ellenőrzése sikeres."
+          )
           PY
+
+
+      # ======================================================
+      # Változások mentése
+      # ======================================================
 
       - name: Változások mentése
         run: |
@@ -115,10 +191,20 @@ jobs:
             git push
           fi
 
+
+      # ======================================================
+      # GitHub Pages artifact
+      # ======================================================
+
       - name: GitHub Pages artifact készítése
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
+
+
+      # ======================================================
+      # GitHub Pages publikálása
+      # ======================================================
 
       - name: GitHub Pages publikálása
         uses: actions/deploy-pages@v4
