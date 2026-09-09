@@ -1,0 +1,124 @@
+name: Generali hozamok frissítése
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: "15 6 * * *"
+
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+
+  update-and-deploy:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Repository letöltése
+        uses: actions/checkout@v4
+
+      - name: Python beállítása
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Generali adatok lekérése
+        run: |
+          python scraper.py
+
+      - name: Adatok ellenőrzése
+        run: |
+          python - <<'PY'
+          import json
+
+          with open(
+              "funds.json",
+              "r",
+              encoding="utf-8"
+          ) as file:
+              data = json.load(file)
+
+          if not isinstance(data, list):
+              raise SystemExit(
+                  "A funds.json nem lista."
+              )
+
+          if len(data) == 0:
+              raise SystemExit(
+                  "A funds.json üres."
+              )
+
+          required = {
+              "id",
+              "name",
+              "ytd",
+              "url"
+          }
+
+          for index, fund in enumerate(data):
+
+              missing = required - set(
+                  fund.keys()
+              )
+
+              if missing:
+                  raise SystemExit(
+                      f"Hibás rekord #{index}: "
+                      f"hiányzó mezők: "
+                      f"{missing}"
+                  )
+
+              if not isinstance(
+                  fund["ytd"],
+                  (int, float)
+              ):
+                  raise SystemExit(
+                      f"Hibás YTD érték: "
+                      f"{fund['name']}"
+                  )
+
+          print(
+              f"Érvényes eszközalapok: "
+              f"{len(data)}"
+          )
+          PY
+
+      - name: Változások mentése
+        run: |
+          git config user.name \
+            "github-actions[bot]"
+
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add funds.json
+
+          if git diff --cached --quiet; then
+            echo "A hozamadatok nem változtak."
+          else
+            git commit \
+              -m "Automatikus hozam frissítés"
+
+            git push
+          fi
+
+      - name: GitHub Pages artifact készítése
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: GitHub Pages publikálása
+        uses: actions/deploy-pages@v4
