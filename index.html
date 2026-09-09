@@ -8,135 +8,137 @@
     content="width=device-width, initial-scale=1.0"
   >
 
-  <title>Generali eszközalap hozamok</title>
-
   <meta
     name="description"
-    content="Generali eszközalapok év elejétől számított hozamai"
+    content="Generali eszközalapok éves hozamának nyomon követése."
   >
 
+  <title>Generali eszközalapok – YTD hozam</title>
+
   <style>
-    :root {
-      --background: #f4f6f8;
-      --surface: #ffffff;
-      --surface-soft: #f8fafb;
-
-      --text: #17202a;
-      --muted: #68727d;
-
-      --border: #e2e7eb;
-
-      --green: #087f5b;
-      --green-soft: #e8f7f1;
-
-      --red: #c92a2a;
-      --red-soft: #fff0f0;
-
-      --shadow:
-        0 15px 45px rgba(20, 30, 40, 0.08);
-
-      --radius: 20px;
-    }
 
     * {
       box-sizing: border-box;
     }
 
-    html {
-      -webkit-text-size-adjust: 100%;
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
     }
 
     body {
-      margin: 0;
-      min-height: 100vh;
-
-      background: var(--background);
-      color: var(--text);
-
       font-family:
         Inter,
         -apple-system,
         BlinkMacSystemFont,
         "Segoe UI",
         Roboto,
-        Helvetica,
         Arial,
         sans-serif;
+
+      background:
+        linear-gradient(
+          180deg,
+          #f4f7fb 0%,
+          #eef2f7 100%
+        );
+
+      color: #172033;
     }
 
-    .container {
-      width: min(900px, calc(100% - 24px));
+    .page {
+      width: min(760px, calc(100% - 32px));
       margin: 0 auto;
-
-      padding: 42px 0 60px;
+      padding: 48px 0 64px;
     }
 
-    header {
+    .header {
       margin-bottom: 28px;
     }
 
     .eyebrow {
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      margin-bottom: 10px;
 
-      margin-bottom: 12px;
+      font-size: 13px;
+      font-weight: 700;
 
-      color: var(--green);
-
-      font-size: 12px;
-      font-weight: 800;
-
-      letter-spacing: 0.09em;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
-    }
 
-    .eyebrow-dot {
-      width: 8px;
-      height: 8px;
-
-      border-radius: 50%;
-
-      background: var(--green);
+      color: #64748b;
     }
 
     h1 {
       margin: 0;
 
-      font-size: clamp(32px, 6vw, 50px);
+      font-size: clamp(28px, 6vw, 44px);
+      line-height: 1.1;
 
-      line-height: 1.05;
-
-      letter-spacing: -0.045em;
+      letter-spacing: -0.03em;
     }
 
     .subtitle {
-      max-width: 680px;
+      margin: 12px 0 0;
 
-      margin: 15px 0 0;
-
-      color: var(--muted);
+      color: #64748b;
 
       font-size: 16px;
-      line-height: 1.65;
+      line-height: 1.6;
     }
 
     .card {
+      background: #ffffff;
+
+      border: 1px solid #e2e8f0;
+      border-radius: 20px;
+
+      box-shadow:
+        0 12px 35px rgba(15, 23, 42, 0.08);
+
+      overflow: hidden;
+    }
+
+    .controls {
       padding: 22px;
-
-      background: var(--surface);
-
-      border: 1px solid var(--border);
-
-      border-radius: var(--radius);
-
-      box-shadow: var(--shadow);
+      border-bottom: 1px solid #e2e8f0;
     }
 
     .search-wrapper {
       position: relative;
+    }
 
-      margin-bottom: 10px;
+    #search {
+      width: 100%;
+
+      min-height: 52px;
+
+      padding:
+        0 48px
+        0 16px;
+
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+
+      background: #ffffff;
+
+      color: #172033;
+
+      font-size: 16px;
+
+      outline: none;
+
+      transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+    }
+
+    #search:focus {
+      border-color: #64748b;
+
+      box-shadow:
+        0 0 0 3px rgba(100, 116, 139, 0.12);
     }
 
     .search-icon {
@@ -147,573 +149,458 @@
 
       transform: translateY(-50%);
 
-      color: #89939d;
+      color: #94a3b8;
 
-      font-size: 20px;
+      font-size: 18px;
 
       pointer-events: none;
-    }
-
-    #search {
-      width: 100%;
-      height: 54px;
-
-      padding: 0 46px 0 44px;
-
-      border: 1px solid var(--border);
-
-      border-radius: 14px;
-
-      outline: none;
-
-      background: #ffffff;
-      color: var(--text);
-
-      font-size: 15px;
-
-      transition:
-        border-color 0.2s,
-        box-shadow 0.2s;
-    }
-
-    #search:focus {
-      border-color: var(--green);
-
-      box-shadow:
-        0 0 0 4px
-        rgba(8, 127, 91, 0.08);
     }
 
     #clearSearch {
       position: absolute;
 
-      right: 12px;
+      right: 8px;
       top: 50%;
-
-      width: 30px;
-      height: 30px;
 
       transform: translateY(-50%);
 
-      display: none;
-
-      align-items: center;
-      justify-content: center;
+      width: 36px;
+      height: 36px;
 
       border: 0;
-      border-radius: 50%;
+      border-radius: 8px;
 
-      background: #eef1f3;
-      color: #68727d;
+      background: transparent;
+
+      color: #64748b;
 
       font-size: 18px;
 
       cursor: pointer;
+
+      display: none;
     }
 
     #clearSearch:hover {
-      background: #e2e7eb;
+      background: #f1f5f9;
     }
 
     .search-info {
-      min-height: 18px;
+      display: flex;
 
-      margin:
-        0 3px 10px;
+      justify-content: space-between;
+      align-items: center;
 
-      color: var(--muted);
+      gap: 12px;
 
-      font-size: 12px;
+      margin-top: 10px;
+
+      color: #64748b;
+
+      font-size: 13px;
+    }
+
+    #fundCount {
+      font-weight: 600;
     }
 
     #fundSelect {
       width: 100%;
-      height: 58px;
 
-      padding: 0 16px;
+      min-height: 52px;
 
-      border: 1px solid var(--border);
+      margin-top: 16px;
 
-      border-radius: 14px;
+      padding:
+        0 14px;
 
-      outline: none;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
 
       background: #ffffff;
-      color: var(--text);
+
+      color: #172033;
 
       font-size: 16px;
+
+      outline: none;
 
       cursor: pointer;
     }
 
     #fundSelect:focus {
-      border-color: var(--green);
+      border-color: #64748b;
 
       box-shadow:
-        0 0 0 4px
-        rgba(8, 127, 91, 0.08);
+        0 0 0 3px rgba(100, 116, 139, 0.12);
     }
 
     .result {
-      display: none;
+      padding: 34px 22px 30px;
 
-      margin-top: 18px;
-
-      padding: 28px;
-
-      background: var(--surface-soft);
-
-      border: 1px solid var(--border);
-
-      border-radius: 17px;
-    }
-
-    .result.visible {
-      display: block;
+      text-align: center;
     }
 
     .result-label {
-      margin-bottom: 8px;
+      margin-bottom: 10px;
 
-      color: var(--muted);
+      color: #64748b;
 
-      font-size: 13px;
+      font-size: 14px;
+      font-weight: 600;
     }
 
-    .fund-name {
-      margin-bottom: 25px;
+    #fundName {
+      margin: 0 auto;
+
+      max-width: 620px;
 
       font-size: clamp(20px, 4vw, 28px);
-
-      font-weight: 750;
-
-      line-height: 1.25;
-    }
-
-    .return {
-      display: flex;
-      align-items: baseline;
-      gap: 6px;
-
-      font-size: clamp(52px, 12vw, 82px);
-
-      font-weight: 850;
-
-      letter-spacing: -0.055em;
-
-      line-height: 1;
-    }
-
-    .return.positive {
-      color: var(--green);
-    }
-
-    .return.negative {
-      color: var(--red);
-    }
-
-    .percent {
-      font-size: 0.48em;
+      line-height: 1.3;
 
       letter-spacing: -0.02em;
     }
 
-    .meta {
-      display: flex;
-
-      flex-wrap: wrap;
-
-      gap: 8px;
-
-      margin-top: 25px;
+    .return-box {
+      margin-top: 28px;
     }
 
-    .badge {
-      padding: 8px 11px;
+    #returnValue {
+      display: inline-block;
 
-      background: #ffffff;
+      font-size: clamp(42px, 11vw, 78px);
+      line-height: 1;
 
-      border: 1px solid var(--border);
+      font-weight: 800;
 
-      border-radius: 999px;
-
-      color: var(--muted);
-
-      font-size: 12px;
+      letter-spacing: -0.05em;
     }
 
-    .status {
-      min-height: 18px;
-
-      margin-top: 15px;
-
-      color: var(--muted);
-
-      font-size: 12px;
-
-      text-align: center;
+    #returnValue.positive {
+      color: #15803d;
     }
 
-    .error {
-      padding: 15px;
-
-      border-radius: 12px;
-
-      background: var(--red-soft);
-
-      color: var(--red);
-
-      line-height: 1.5;
-
-      text-align: left;
+    #returnValue.negative {
+      color: #dc2626;
     }
 
-    .loading {
+    #returnValue.no-data {
+      color: #64748b;
+
+      font-size: clamp(32px, 8vw, 54px);
+
+      letter-spacing: -0.03em;
+    }
+
+    #value {
+      display: block;
+
+      margin-top: 8px;
+
+      color: #64748b;
+
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .date {
+      margin-top: 24px;
+
       display: inline-flex;
 
       align-items: center;
 
-      gap: 8px;
+      min-height: 32px;
+
+      padding: 0 12px;
+
+      border-radius: 999px;
+
+      background: #f1f5f9;
+
+      color: #64748b;
+
+      font-size: 12px;
+      font-weight: 600;
     }
 
-    .spinner {
-      width: 15px;
-      height: 15px;
+    .footer {
+      margin-top: 18px;
 
-      border: 2px solid #dce1e5;
+      text-align: center;
 
-      border-top-color: var(--green);
+      color: #94a3b8;
 
-      border-radius: 50%;
-
-      animation: spin 0.7s linear infinite;
+      font-size: 12px;
+      line-height: 1.5;
     }
 
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
+    .error {
+      padding: 28px 22px;
 
-    footer {
-      margin-top: 22px;
+      color: #b91c1c;
 
-      color: var(--muted);
+      background: #fef2f2;
 
-      font-size: 11px;
+      text-align: center;
 
       line-height: 1.6;
+    }
+
+    .empty {
+      padding: 30px 20px;
+
+      color: #64748b;
 
       text-align: center;
     }
 
-    footer a {
-      color: inherit;
-    }
+    @media (max-width: 560px) {
 
-    @media (max-width: 600px) {
-      .container {
-        width: calc(100% - 18px);
+      .page {
+        width: min(
+          100% - 20px,
+          760px
+        );
 
-        padding-top: 25px;
+        padding-top: 28px;
       }
 
-      .card {
-        padding: 15px;
-
-        border-radius: 17px;
+      .controls {
+        padding: 16px;
       }
 
       .result {
-        padding: 21px;
+        padding:
+          28px 16px
+          24px;
+      }
+
+      .search-info {
+        align-items: flex-start;
+        flex-direction: column;
       }
     }
+
   </style>
 </head>
 
 <body>
 
-  <main class="container">
+  <main class="page">
 
-    <header>
+    <header class="header">
 
       <div class="eyebrow">
-        <span class="eyebrow-dot"></span>
-        Befektetések
+        Generali eszközalapok
       </div>
 
       <h1>
-        Eszközalap hozamok
+        Éves hozam
       </h1>
 
       <p class="subtitle">
-        Válassz ki egy Generali eszközalapot,
-        és nézd meg az év elejétől számított,
-        nem évesített hozamát.
+        Forint alapú eszközalapok II. –
+        év elejétől számított, nem évesített hozam.
       </p>
 
     </header>
 
+
     <section class="card">
 
-      <div class="search-wrapper">
+      <div class="controls">
 
-        <span class="search-icon">
-          ⌕
-        </span>
+        <div class="search-wrapper">
 
-        <input
-          id="search"
-          type="search"
-          placeholder="Kezdj el gépelni..."
-          autocomplete="off"
-          autocorrect="off"
-          spellcheck="false"
-          aria-label="Eszközalap keresése"
+          <span
+            class="search-icon"
+            aria-hidden="true"
+          >
+            ⌕
+          </span>
+
+          <input
+            id="search"
+            type="search"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Keresés az alapok között..."
+            aria-label="Eszközalap keresése"
+          >
+
+          <button
+            id="clearSearch"
+            type="button"
+            aria-label="Keresés törlése"
+          >
+            ×
+          </button>
+
+        </div>
+
+        <div class="search-info">
+
+          <span id="fundCount">
+            Betöltés...
+          </span>
+
+          <span>
+            Gépelés közben automatikusan szűr
+          </span>
+
+        </div>
+
+        <select
+          id="fundSelect"
+          aria-label="Eszközalap kiválasztása"
         >
-
-        <button
-          id="clearSearch"
-          type="button"
-          aria-label="Keresés törlése"
-          title="Keresés törlése"
-        >
-          ×
-        </button>
+          <option value="">
+            Eszközalap kiválasztása...
+          </option>
+        </select>
 
       </div>
 
-      <div
-        id="searchInfo"
-        class="search-info"
-      ></div>
-
-      <select
-        id="fundSelect"
-        aria-label="Eszközalap kiválasztása"
-      >
-        <option value="">
-          Adatok betöltése...
-        </option>
-      </select>
 
       <div
-        id="result"
+        id="content"
         class="result"
       >
 
         <div class="result-label">
-          Év elejétől számított hozam
+          Kiválasztott eszközalap
         </div>
 
-        <div
-          id="fundName"
-          class="fund-name"
-        ></div>
+        <h2 id="fundName">
+          —
+        </h2>
 
-        <div
-          id="returnValue"
-          class="return"
-        >
+        <div class="return-box">
+
+          <span id="returnValue">
+            —
+          </span>
 
           <span id="value">
-            –
-          </span>
-
-          <span class="percent">
-            %
+            Év elejétől számított hozam
           </span>
 
         </div>
 
-        <div class="meta">
-
-          <span class="badge">
-            Nem évesített hozam
-          </span>
-
-          <span
-            id="dateBadge"
-            class="badge"
-          ></span>
-
+        <div
+          id="dateBadge"
+          class="date"
+        >
+          —
         </div>
-
-      </div>
-
-      <div
-        id="status"
-        class="status"
-      >
-
-        <span class="loading">
-
-          <span class="spinner"></span>
-
-          Adatok betöltése...
-
-        </span>
 
       </div>
 
     </section>
 
-    <footer>
 
-      Az adatok a Generali Biztosító
-      hivatalos oldalairól származnak.
-
-      A múltbeli teljesítmény nem jelent
-      garanciát a jövőbeni teljesítményre.
-
-      <br>
-
-      <a
-        href="https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink.aspx"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        Generali – Eszközalapjaink
-      </a>
-
-    </footer>
+    <div class="footer">
+      Az adatok a Generali hivatalos oldaláról
+      automatikusan frissülnek.
+    </div>
 
   </main>
 
+
   <script>
-    "use strict";
 
-    let funds = [];
-
-    const select =
-      document.getElementById("fundSelect");
-
-    const search =
+    const searchInput =
       document.getElementById("search");
 
     const clearSearch =
       document.getElementById("clearSearch");
 
-    const searchInfo =
-      document.getElementById("searchInfo");
+    const fundCount =
+      document.getElementById("fundCount");
 
-    const result =
-      document.getElementById("result");
+    const fundSelect =
+      document.getElementById("fundSelect");
 
     const fundName =
       document.getElementById("fundName");
 
-    const value =
-      document.getElementById("value");
-
     const returnValue =
       document.getElementById("returnValue");
 
-    const status =
-      document.getElementById("status");
+    const value =
+      document.getElementById("value");
 
     const dateBadge =
       document.getElementById("dateBadge");
 
+    const content =
+      document.getElementById("content");
 
-    /*
-     * Magyar ékezetek eltávolítása.
-     *
-     * Így például:
-     *
-     * "kötvény" → "kotveny"
-     * "részvény" → "reszveny"
-     * "fejlett" → "fejlett"
-     *
-     * Ez biztosítja, hogy ékezet nélkül is
-     * lehessen keresni.
-     */
+
+    let funds = [];
+
+    let filteredFunds = [];
+
+
+    // Ékezetek nélküli keresés:
+    // "kotveny" megtalálja a "kötvény" szót,
+    // "reszveny" megtalálja a "részvény" szót.
     function normalizeText(text) {
 
       return String(text || "")
         .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .toLocaleLowerCase("hu-HU")
+        .replace(
+          /[\u0300-\u036f]/g,
+          ""
+        )
+        .toLowerCase()
+        .replace(
+          /\s+/g,
+          " "
+        )
         .trim();
 
     }
 
 
-    /*
-     * A keresési kifejezést is megtisztítjuk.
-     *
-     * Több egymás utáni szóközt egyetlen szóközzé
-     * alakítunk.
-     */
-    function normalizeQuery(text) {
+    function formatYtd(number) {
 
-      return normalizeText(text)
-        .replace(/\s+/g, " ");
-
-    }
-
-
-    /*
-     * A találati lista kirajzolása.
-     */
-    function renderSelect(list) {
-
-      select.innerHTML = "";
-
-      const placeholder =
-        document.createElement("option");
-
-      placeholder.value = "";
-
-      if (list.length === 0) {
-
-        placeholder.textContent =
-          "Nincs találat";
-
-      } else if (list.length === 1) {
-
-        placeholder.textContent =
-          "1 találat";
-
-      } else {
-
-        placeholder.textContent =
-          "Válassz eszközalapot...";
-
-      }
-
-      select.appendChild(placeholder);
-
-
-      for (const fund of list) {
-
-        const option =
-          document.createElement("option");
-
-        option.value =
-          fund.id;
-
-        option.textContent =
-          fund.name;
-
-        select.appendChild(option);
-
-      }
+      return Number(number).toLocaleString(
+        "hu-HU",
+        {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+          signDisplay: "always"
+        }
+      ) + " %";
 
     }
 
 
-    /*
-     * Egy konkrét eszközalap adatainak megjelenítése.
-     */
     function showFund(fund) {
 
       if (!fund) {
 
-        result.classList.remove("visible");
+        fundName.textContent =
+          "Nincs kiválasztott eszközalap";
+
+        returnValue.textContent =
+          "—";
+
+        returnValue.classList.remove(
+          "positive",
+          "negative",
+          "no-data"
+        );
+
+        value.textContent =
+          "Válassz egy eszközalapot a listából.";
+
+        dateBadge.textContent =
+          "—";
 
         return;
-
       }
 
 
@@ -722,37 +609,41 @@
 
 
       const numericValue =
-        Number(
-          String(fund.ytd)
-            .replace(",", ".")
-        );
-
-
-      if (!Number.isFinite(numericValue)) {
-
-        value.textContent = "–";
-
-      } else {
-
-        value.textContent =
-          numericValue.toLocaleString(
-            "hu-HU",
-            {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2
-            }
-          );
-
-      }
+        typeof fund.ytd === "number"
+          ? fund.ytd
+          : Number(
+              String(fund.ytd)
+                .replace(",", ".")
+            );
 
 
       returnValue.classList.remove(
         "positive",
-        "negative"
+        "negative",
+        "no-data"
       );
 
 
-      if (Number.isFinite(numericValue)) {
+      if (
+        fund.ytd === null ||
+        fund.ytd === undefined ||
+        !Number.isFinite(numericValue)
+      ) {
+
+        returnValue.textContent =
+          "Nincs adat";
+
+        returnValue.classList.add(
+          "no-data"
+        );
+
+        value.textContent =
+          "Jelenleg nincs elérhető YTD hozam.";
+
+      } else {
+
+        returnValue.textContent =
+          formatYtd(numericValue);
 
         returnValue.classList.add(
           numericValue >= 0
@@ -760,236 +651,223 @@
             : "negative"
         );
 
+        value.textContent =
+          "Év elejétől számított hozam (nem évesített)";
       }
 
 
       if (fund.date) {
 
         dateBadge.textContent =
-          "Adat: " + fund.date;
+          "Értéknap: " + fund.date;
 
       } else {
 
         dateBadge.textContent =
-          "Legfrissebb elérhető adat";
+          "Értéknap: nincs adat";
 
       }
-
-
-      result.classList.add("visible");
 
     }
 
 
-    /*
-     * A keresés feldolgozása.
-     *
-     * FONTOS:
-     * Ez minden egyes billentyűleütés után lefut.
-     * Nem kell Entert nyomni.
-     */
-    function applySearch() {
+    function renderSelect() {
 
-      const query =
-        normalizeQuery(search.value);
+      const previousValue =
+        fundSelect.value;
+
+      fundSelect.innerHTML = "";
 
 
-      /*
-       * Keresés törlése gomb láthatósága.
-       */
-      clearSearch.style.display =
-        query
-          ? "flex"
-          : "none";
+      if (filteredFunds.length === 0) {
 
+        const option =
+          document.createElement("option");
 
-      /*
-       * Ha nincs keresési kifejezés,
-       * minden alap megjelenik.
-       */
-      if (!query) {
+        option.value = "";
 
-        renderSelect(funds);
+        option.textContent =
+          "Nincs találat";
 
-        searchInfo.textContent =
-          funds.length +
-          " eszközalap";
-
-        result.classList.remove(
-          "visible"
+        fundSelect.appendChild(
+          option
         );
 
+        fundCount.textContent =
+          "0 találat";
+
+        showFund(null);
+
         return;
+      }
+
+
+      const firstOption =
+        document.createElement("option");
+
+      firstOption.value = "";
+
+      firstOption.textContent =
+        "Eszközalap kiválasztása...";
+
+      fundSelect.appendChild(
+        firstOption
+      );
+
+
+      filteredFunds.forEach(
+        (fund) => {
+
+          const option =
+            document.createElement("option");
+
+          option.value =
+            fund.id;
+
+          option.textContent =
+            fund.name;
+
+          fundSelect.appendChild(
+            option
+          );
+
+        }
+      );
+
+
+      const stillExists =
+        filteredFunds.some(
+          (fund) =>
+            fund.id === previousValue
+        );
+
+
+      if (stillExists) {
+
+        fundSelect.value =
+          previousValue;
+
+      } else {
+
+        fundSelect.value =
+          "";
 
       }
 
 
-      /*
-       * A név normalizált változatában keresünk.
-       *
-       * Példa:
-       *
-       * keresés: "kotveny"
-       *
-       * név: "Hazai kötvény"
-       *
-       * mindkettőből:
-       *
-       * "kotveny"
-       *
-       * lesz.
-       */
-      const filtered =
+      updateCount();
+    }
+
+
+    function updateCount() {
+
+      const total =
+        funds.length;
+
+      const visible =
+        filteredFunds.length;
+
+
+      if (visible === total) {
+
+        fundCount.textContent =
+          `${total} eszközalap`;
+
+      } else {
+
+        fundCount.textContent =
+          `${visible} / ${total} találat`;
+
+      }
+
+    }
+
+
+    function applySearch() {
+
+      const query =
+        normalizeText(
+          searchInput.value
+        );
+
+
+      clearSearch.style.display =
+        query
+          ? "block"
+          : "none";
+
+
+      if (!query) {
+
+        filteredFunds =
+          [...funds];
+
+        renderSelect();
+
+        return;
+      }
+
+
+      const words =
+        query
+          .split(" ")
+          .filter(Boolean);
+
+
+      filteredFunds =
         funds.filter(
-          function (fund) {
+          (fund) => {
 
             const name =
-              normalizeText(fund.name);
+              normalizeText(
+                fund.name
+              );
 
-            return name.includes(query);
+            return words.every(
+              (word) =>
+                name.includes(word)
+            );
 
           }
         );
 
 
-      renderSelect(filtered);
+      renderSelect();
 
 
-      if (filtered.length === 0) {
+      // Ha pontosan egy találat maradt,
+      // automatikusan megjelenítjük.
+      if (
+        filteredFunds.length === 1
+      ) {
 
-        searchInfo.textContent =
-          "Nincs találat.";
+        const fund =
+          filteredFunds[0];
 
-        result.classList.remove(
-          "visible"
-        );
+        fundSelect.value =
+          fund.id;
 
-        return;
+        showFund(fund);
 
-      }
+      } else {
 
-
-      if (filtered.length === 1) {
-
-        searchInfo.textContent =
-          "1 találat";
-
-        /*
-         * Ha pontosan egy találat maradt,
-         * automatikusan kiválasztjuk.
-         */
-        select.value =
-          filtered[0].id;
-
-        showFund(filtered[0]);
-
-        return;
+        showFund(null);
 
       }
-
-
-      searchInfo.textContent =
-        filtered.length +
-        " találat";
-
-
-      /*
-       * Több találat esetén a felhasználó
-       * kiválaszthatja a megfelelőt.
-       */
-      result.classList.remove(
-        "visible"
-      );
 
     }
 
 
-    /*
-     * A selectben kiválasztott alap megjelenítése.
-     */
-    select.addEventListener(
-      "change",
-      function () {
+    function findFundById(id) {
 
-        const id =
-          select.value;
+      return funds.find(
+        (fund) =>
+          fund.id === id
+      ) || null;
 
-
-        if (!id) {
-
-          showFund(null);
-
-          return;
-
-        }
+    }
 
 
-        const fund =
-          funds.find(
-            function (item) {
-
-              return item.id === id;
-
-            }
-          );
-
-
-        showFund(fund);
-
-      }
-    );
-
-
-    /*
-     * KERESÉS GÉPELÉS KÖZBEN.
-     *
-     * Ez a legfontosabb rész.
-     */
-    search.addEventListener(
-      "input",
-      applySearch
-    );
-
-
-    /*
-     * Keresés törlése.
-     */
-    clearSearch.addEventListener(
-      "click",
-      function () {
-
-        search.value = "";
-
-        applySearch();
-
-        search.focus();
-
-      }
-    );
-
-
-    /*
-     * Escape billentyűvel is törölhető a keresés.
-     */
-    search.addEventListener(
-      "keydown",
-      function (event) {
-
-        if (event.key === "Escape") {
-
-          search.value = "";
-
-          applySearch();
-
-        }
-
-      }
-    );
-
-
-    /*
-     * Adatok betöltése a funds.json fájlból.
-     */
     async function loadFunds() {
 
       try {
@@ -1007,7 +885,7 @@
         if (!response.ok) {
 
           throw new Error(
-            "A funds.json nem tölthető be."
+            "A funds.json betöltése sikertelen."
           );
 
         }
@@ -1026,84 +904,91 @@
         }
 
 
-        /*
-         * Csak valóban használható rekordokat
-         * tartunk meg.
-         */
         funds =
           data.filter(
-            function (fund) {
-
-              return (
-                fund &&
-                fund.id &&
-                fund.name &&
-                fund.ytd !== undefined &&
-                fund.ytd !== null
-              );
-
-            }
+            (fund) =>
+              fund &&
+              fund.id &&
+              fund.name
           );
 
 
-        /*
-         * ABC szerinti rendezés.
-         */
-        funds.sort(
-          function (a, b) {
-
-            return a.name.localeCompare(
-              b.name,
-              "hu"
-            );
-
-          }
-        );
+        filteredFunds =
+          [...funds];
 
 
-        /*
-         * Kezdetben minden alap látható.
-         */
-        renderSelect(funds);
+        renderSelect();
 
 
-        searchInfo.textContent =
-          funds.length +
-          " eszközalap";
+        if (funds.length === 0) {
 
+          throw new Error(
+            "Nem található egyetlen eszközalap sem."
+          );
 
-        status.textContent =
-          "Az adatok frissítve.";
+        }
 
 
       } catch (error) {
 
         console.error(error);
 
+        content.className =
+          "error";
 
-        select.innerHTML =
-          "<option value=\"\">" +
-          "Az adatok nem tölthetők be" +
-          "</option>";
+        content.innerHTML = `
+          Nem sikerült betölteni az
+          eszközalapok adatait.
+          <br><br>
+          Kérlek, próbáld újra később.
+        `;
 
-
-        searchInfo.textContent = "";
-
-
-        status.innerHTML =
-          '<div class="error">' +
-          "Nem sikerült betölteni az adatokat. " +
-          "Próbáld újratölteni az oldalt később." +
-          "</div>";
+        fundCount.textContent =
+          "Betöltési hiba";
 
       }
 
     }
 
 
-    /*
-     * Indítás.
-     */
+    searchInput.addEventListener(
+      "input",
+      applySearch
+    );
+
+
+    clearSearch.addEventListener(
+      "click",
+      () => {
+
+        searchInput.value = "";
+
+        applySearch();
+
+        searchInput.focus();
+
+      }
+    );
+
+
+    fundSelect.addEventListener(
+      "change",
+      () => {
+
+        const selectedId =
+          fundSelect.value;
+
+        const fund =
+          findFundById(
+            selectedId
+          );
+
+        showFund(fund);
+
+      }
+    );
+
+
     loadFunds();
 
   </script>
