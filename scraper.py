@@ -26,6 +26,40 @@ USER_AGENT = (
 )
 
 
+# -------------------------------------------------------------------
+# CSAK A "FORINT ALAPÚ ESZKÖZALAPOK II." CSOPORT
+# -------------------------------------------------------------------
+#
+# Ezek a Generali oldalán jelenleg a II. csoport alatt szereplő
+# eszközalapok.
+#
+# A név csak szűrésre szolgál.
+# A hozzájuk tartozó aktuális URL-t továbbra is a Generali
+# főoldaláról vesszük fel.
+#
+
+ALLOWED_FUND_NAMES = {
+    "Pénzpiaci 2016 eszközalap",
+    "Hazai kötvény eszközalap",
+    "Tallózó abszolút hozam eszközalap",
+    "Világjáró kötvény eszközalap",
+    "Horizont 15+ vegyes eszközalap",
+    "Horizont 10+ vegyes eszközalap",
+    "Horizont 5+ vegyes eszközalap",
+    "Hazai részvény eszközalap",
+    "Fejlődő világ részvény eszközalap",
+    "Fejlett világ részvény eszközalap",
+    "Világmárkák részvény eszközalap",
+    "Innováció részvény eszközalap",
+    "Fenntartható Világ részvény eszközalap",
+    "Tudatos fejlett piac részvény eszközalap",
+    "TávLat fejlődő piac részvény eszközalap",
+    "Kötvény 2027/M árfolyamvédett eszközalap",
+    "Magyar piac részvény eszközalap",
+    "Nemzetközi márkák részvény eszközalap",
+}
+
+
 class LinkParser(HTMLParser):
 
     def __init__(self):
@@ -191,6 +225,11 @@ def is_fund_url(url):
     return lower_url.endswith(".aspx")
 
 
+def normalize_fund_name(name):
+
+    return clean_text(name)
+
+
 def extract_fund_links(html):
 
     parser = LinkParser()
@@ -202,6 +241,17 @@ def extract_fund_links(html):
     for href, name in parser.links:
 
         if not name:
+            continue
+
+        name = normalize_fund_name(name)
+
+        # -----------------------------------------------------------
+        # A LEGFONTOSABB SZŰRÉS:
+        #
+        # Csak a Forint II. csoportban szereplő neveket engedjük át.
+        # -----------------------------------------------------------
+
+        if name not in ALLOWED_FUND_NAMES:
             continue
 
         url = normalize_url(href)
@@ -308,7 +358,8 @@ def scrape():
 
     print()
     print(
-        "Generali eszközalapok frissítése"
+        "Generali – Forint alapú "
+        "eszközalapok II. frissítése"
     )
     print("=" * 60)
 
@@ -322,15 +373,33 @@ def scrape():
 
     print()
     print(
-        f"Talált eszközalap oldalak: "
-        f"{len(fund_links)}"
+        "Forint II. csoportban talált "
+        f"eszközalapok: {len(fund_links)}"
     )
 
     if not fund_links:
 
         raise RuntimeError(
-            "A Generali főoldalán nem "
-            "találtam eszközalap-linkeket."
+            "A Generali oldalán nem találtam "
+            "Forint alapú eszközalapok II. "
+            "csoportjába tartozó eszközalapokat."
+        )
+
+    # Biztonsági ellenőrzés:
+    #
+    # A Generali oldalán jelenleg 18 alapnak kell
+    # lennie ebben a csoportban.
+    #
+    # Ha ettől eltérő számot kapunk, az Action
+    # hibával leáll, így nem írunk hibás adatot
+    # a funds.json fájlba.
+    if len(fund_links) != len(ALLOWED_FUND_NAMES):
+
+        raise RuntimeError(
+            "A várt Forint II. eszközalapok száma "
+            f"{len(ALLOWED_FUND_NAMES)}, "
+            f"de a Generali oldalán "
+            f"{len(fund_links)} található."
         )
 
     results = []
@@ -375,6 +444,7 @@ def scrape():
             )
 
             if date:
+
                 print(
                     f"  Dátum: {date}"
                 )
@@ -392,8 +462,6 @@ def scrape():
                 }
             )
 
-            # Rövid szünet, hogy ne terheljük
-            # feleslegesen a forrásszervert.
             time.sleep(0.25)
 
         except Exception as error:
@@ -412,12 +480,46 @@ def scrape():
     if not results:
 
         raise RuntimeError(
-            "Egyetlen eszközalap YTD adata "
-            "sem volt feldolgozható."
+            "Egyetlen Forint II. "
+            "eszközalap YTD adata sem "
+            "volt feldolgozható."
         )
 
+    # További biztonsági ellenőrzés:
+    #
+    # Ha valamelyik alap adatlekérése nem sikerült,
+    # nem írjuk felül a korábbi funds.json-t.
+    if len(results) != len(ALLOWED_FUND_NAMES):
+
+        missing = (
+            ALLOWED_FUND_NAMES
+            - {
+                item["name"]
+                for item in results
+            }
+        )
+
+        missing_text = ", ".join(
+            sorted(missing)
+        )
+
+        raise RuntimeError(
+            "Nem sikerült minden Forint II. "
+            "eszközalap YTD adatát feldolgozni.\n"
+            "Hiányzó alap(ok): "
+            + missing_text
+        )
+
+    # Először ideiglenes fájlba írunk.
+    #
+    # Csak sikeres teljes feldolgozás után
+    # cseréljük le a funds.json-t.
+    temporary_file = (
+        OUTPUT_FILE + ".tmp"
+    )
+
     with open(
-        OUTPUT_FILE,
+        temporary_file,
         "w",
         encoding="utf-8",
     ) as file:
@@ -431,6 +533,13 @@ def scrape():
 
         file.write("\n")
 
+    import os
+
+    os.replace(
+        temporary_file,
+        OUTPUT_FILE,
+    )
+
     print()
     print("=" * 60)
 
@@ -441,6 +550,13 @@ def scrape():
 
     print(
         f"Mentett fájl: {OUTPUT_FILE}"
+    )
+
+    print()
+    print(
+        "A funds.json kizárólag a "
+        "Forint alapú eszközalapok II. "
+        "csoportját tartalmazza."
     )
 
 
