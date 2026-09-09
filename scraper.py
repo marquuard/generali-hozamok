@@ -26,17 +26,9 @@ USER_AGENT = (
 )
 
 
-# -------------------------------------------------------------------
-# CSAK A "FORINT ALAPÚ ESZKÖZALAPOK II." CSOPORT
-# -------------------------------------------------------------------
-#
-# Ezek a Generali oldalán jelenleg a II. csoport alatt szereplő
-# eszközalapok.
-#
-# A név csak szűrésre szolgál.
-# A hozzájuk tartozó aktuális URL-t továbbra is a Generali
-# főoldaláról vesszük fel.
-#
+# ============================================================
+# FORINT ALAPÚ ESZKÖZALAPOK II.
+# ============================================================
 
 ALLOWED_FUND_NAMES = {
     "Pénzpiaci 2016 eszközalap",
@@ -225,11 +217,6 @@ def is_fund_url(url):
     return lower_url.endswith(".aspx")
 
 
-def normalize_fund_name(name):
-
-    return clean_text(name)
-
-
 def extract_fund_links(html):
 
     parser = LinkParser()
@@ -243,23 +230,17 @@ def extract_fund_links(html):
         if not name:
             continue
 
-        name = normalize_fund_name(name)
-
-        # -----------------------------------------------------------
-        # A LEGFONTOSABB SZŰRÉS:
-        #
-        # Csak a Forint II. csoportban szereplő neveket engedjük át.
-        # -----------------------------------------------------------
-
-        if name not in ALLOWED_FUND_NAMES:
-            continue
-
         url = normalize_url(href)
 
         if not url:
             continue
 
         if not is_fund_url(url):
+            continue
+
+        # Csak a Forint II. szekcióban szereplő,
+        # pontosan engedélyezett neveket tartjuk meg.
+        if name not in ALLOWED_FUND_NAMES:
             continue
 
         funds[url] = name
@@ -302,8 +283,13 @@ def extract_ytd(text):
             ".",
         )
 
-        return float(value)
+        try:
+            return float(value)
+        except ValueError:
+            return None
 
+    # Ha a Generali "-" értéket ad,
+    # akkor az azt jelenti, hogy nincs YTD adat.
     return None
 
 
@@ -358,8 +344,7 @@ def scrape():
 
     print()
     print(
-        "Generali – Forint alapú "
-        "eszközalapok II. frissítése"
+        "Generali Forint II. eszközalapok frissítése"
     )
     print("=" * 60)
 
@@ -373,45 +358,77 @@ def scrape():
 
     print()
     print(
-        "Forint II. csoportban talált "
-        f"eszközalapok: {len(fund_links)}"
+        f"Forint II. eszközalap-linkek: "
+        f"{len(fund_links)}"
     )
 
-    if not fund_links:
-
-        raise RuntimeError(
-            "A Generali oldalán nem találtam "
-            "Forint alapú eszközalapok II. "
-            "csoportjába tartozó eszközalapokat."
-        )
-
-    # Biztonsági ellenőrzés:
-    #
-    # A Generali oldalán jelenleg 18 alapnak kell
-    # lennie ebben a csoportban.
-    #
-    # Ha ettől eltérő számot kapunk, az Action
-    # hibával leáll, így nem írunk hibás adatot
-    # a funds.json fájlba.
+    # A főoldalról mind a 18 alapot meg kell találni.
+    # Ez továbbra is valódi ellenőrzés, hogy ne változott-e
+    # meg a Generali oldal szerkezete.
     if len(fund_links) != len(ALLOWED_FUND_NAMES):
 
+        found_names = set(
+            fund_links.values()
+        )
+
+        missing = sorted(
+            ALLOWED_FUND_NAMES - found_names,
+            key=str.casefold,
+        )
+
+        extra = sorted(
+            found_names - ALLOWED_FUND_NAMES,
+            key=str.casefold,
+        )
+
+        print()
+        print(
+            "FIGYELEM: a Generali főoldalán nem "
+            "pontosan a várt 18 Forint II. alap "
+            "található."
+        )
+
+        if missing:
+            print()
+            print("Hiányzó alap(ok):")
+
+            for name in missing:
+                print(
+                    f"  - {name}"
+                )
+
+        if extra:
+            print()
+            print("Ismeretlen alap(ok):")
+
+            for name in extra:
+                print(
+                    f"  - {name}"
+                )
+
         raise RuntimeError(
-            "A várt Forint II. eszközalapok száma "
-            f"{len(ALLOWED_FUND_NAMES)}, "
-            f"de a Generali oldalán "
-            f"{len(fund_links)} található."
+            "A Forint II. eszközalapok listája "
+            "nem egyezik a várt 18 alapból álló "
+            "listával."
         )
 
     results = []
 
-    for number, (url, name) in enumerate(
+    # Név szerint dolgozzuk fel őket, így a kimenet
+    # mindig stabil sorrendű lesz.
+    funds_to_process = sorted(
         fund_links.items(),
+        key=lambda item: item[1].casefold(),
+    )
+
+    for number, (url, name) in enumerate(
+        funds_to_process,
         start=1,
     ):
 
         print()
         print(
-            f"[{number}/{len(fund_links)}] "
+            f"[{number}/{len(funds_to_process)}] "
             f"{name}"
         )
 
@@ -434,14 +451,14 @@ def scrape():
             if ytd is None:
 
                 print(
-                    "  YTD adat nem található."
+                    "  YTD: nincs adat"
                 )
 
-                continue
+            else:
 
-            print(
-                f"  YTD: {ytd}%"
-            )
+                print(
+                    f"  YTD: {ytd}%"
+                )
 
             if date:
 
@@ -466,10 +483,28 @@ def scrape():
 
         except Exception as error:
 
+            # Ha az egyedi oldal technikai okból nem
+            # tölthető be, az alap akkor is bekerül.
+            # Így a weboldalon látszani fog, hogy
+            # jelenleg nincs hozzá adat.
             print(
-                "  HIBA: "
+                "  HIBA az alap oldalának "
+                "feldolgozásakor: "
                 f"{type(error).__name__}: "
                 f"{error}"
+            )
+
+            results.append(
+                {
+                    "id": create_id(
+                        name,
+                        url,
+                    ),
+                    "name": name,
+                    "ytd": None,
+                    "date": None,
+                    "url": url,
+                }
             )
 
     results.sort(
@@ -477,49 +512,15 @@ def scrape():
         item["name"].casefold()
     )
 
-    if not results:
-
-        raise RuntimeError(
-            "Egyetlen Forint II. "
-            "eszközalap YTD adata sem "
-            "volt feldolgozható."
-        )
-
-    # További biztonsági ellenőrzés:
-    #
-    # Ha valamelyik alap adatlekérése nem sikerült,
-    # nem írjuk felül a korábbi funds.json-t.
     if len(results) != len(ALLOWED_FUND_NAMES):
 
-        missing = (
-            ALLOWED_FUND_NAMES
-            - {
-                item["name"]
-                for item in results
-            }
-        )
-
-        missing_text = ", ".join(
-            sorted(missing)
-        )
-
         raise RuntimeError(
-            "Nem sikerült minden Forint II. "
-            "eszközalap YTD adatát feldolgozni.\n"
-            "Hiányzó alap(ok): "
-            + missing_text
+            "Nem sikerült létrehozni mind a 18 "
+            "Forint II. eszközalap rekordját."
         )
-
-    # Először ideiglenes fájlba írunk.
-    #
-    # Csak sikeres teljes feldolgozás után
-    # cseréljük le a funds.json-t.
-    temporary_file = (
-        OUTPUT_FILE + ".tmp"
-    )
 
     with open(
-        temporary_file,
+        OUTPUT_FILE,
         "w",
         encoding="utf-8",
     ) as file:
@@ -533,13 +534,6 @@ def scrape():
 
         file.write("\n")
 
-    import os
-
-    os.replace(
-        temporary_file,
-        OUTPUT_FILE,
-    )
-
     print()
     print("=" * 60)
 
@@ -548,15 +542,28 @@ def scrape():
         f"{len(results)} eszközalap"
     )
 
-    print(
-        f"Mentett fájl: {OUTPUT_FILE}"
-    )
+    missing_ytd = [
+        item["name"]
+        for item in results
+        if item["ytd"] is None
+    ]
+
+    if missing_ytd:
+
+        print()
+        print(
+            "YTD adattal nem rendelkező alap(ok):"
+        )
+
+        for name in missing_ytd:
+
+            print(
+                f"  - {name}"
+            )
 
     print()
     print(
-        "A funds.json kizárólag a "
-        "Forint alapú eszközalapok II. "
-        "csoportját tartalmazza."
+        f"Mentett fájl: {OUTPUT_FILE}"
     )
 
 
