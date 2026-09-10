@@ -14,6 +14,7 @@ on:
     paths-ignore:
       - "funds.json"
       - "portfolio.json"
+      - "portfolio_images/**"
 
 permissions:
   contents: write
@@ -37,16 +38,26 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: Alap Python csomagok
+      - name: Python csomagok telepítése
         run: |
           python -m pip install --upgrade pip
-          pip install requests beautifulsoup4
+          pip install requests beautifulsoup4 pillow pytesseract
 
-      - name: Statikus portfólió és referenciaindex egyszeri betöltése
+      - name: OCR csomag telepítése az egyszeri portfólió-kép felismeréshez
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-hun
+
+      - name: Egyszeri Playwright telepítés a statikus portfólióképhez
         run: |
           if [ ! -f portfolio.json ]; then
             pip install playwright
             playwright install --with-deps chromium
+          fi
+
+      - name: Statikus portfóliókép és referenciaindex egyszeri betöltése
+        run: |
+          if [ ! -f portfolio.json ]; then
             python portfolio_init.py
           else
             echo "A portfolio.json már létezik, nem kérjük le újra."
@@ -76,7 +87,6 @@ jobs:
 
           for index, fund in enumerate(funds):
               missing = required - set(fund.keys())
-
               if missing:
                   raise SystemExit(
                       f"Hibás rekord #{index}: hiányzó mezők: {missing}"
@@ -100,13 +110,21 @@ jobs:
                   f"A portfolio.json nem pontosan 18 eszközalapot tartalmaz: {len(portfolio)}"
               )
 
+          missing_images = []
           for fund_id, data in portfolio.items():
-              if not data.get("portfolio"):
-                  raise SystemExit(
-                      f"Nincs portfólióadat: {fund_id}"
-                  )
+              image = data.get("portfolio_image")
+              if not image:
+                  missing_images.append(fund_id)
 
-          print("18 YTD rekord és 18 statikus portfólió rendben.")
+          if missing_images:
+              print(
+                  "Figyelem: ezekhez az eszközalapokhoz nem találtunk "
+                  f"automatikus portfólióképet: {', '.join(missing_images)}"
+              )
+          else:
+              print("Mind a 18 eszközalaphoz megvan a statikus portfóliókép.")
+
+          print("18 YTD rekord és 18 statikus portfóliórekord rendben.")
           PY
 
       - name: Változások mentése
@@ -114,7 +132,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add funds.json portfolio.json
+          git add funds.json portfolio.json portfolio_images
 
           if git diff --cached --quiet; then
             echo "Nincs mentendő változás."
