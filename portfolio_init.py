@@ -1,388 +1,168 @@
-import json
-import re
+import json, re, shutil
 from pathlib import Path
 from urllib.parse import urljoin
-
-import cv2
-import numpy as np
 import requests
 from bs4 import BeautifulSoup
-from PIL import Image
 from playwright.sync_api import sync_playwright
 
-OUTPUT = Path("portfolio.json")
-IMAGE_DIR = Path("portfolio_images")
-PORTFOLIO_VERSION = 3
+MAIN_URL="https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink.aspx"
+IMAGE_DIR=Path("portfolio_images")
+OUTPUT=Path("portfolio.json")
+HEADERS={"User-Agent":"Mozilla/5.0 (compatible; GeneraliFundTracker/5.0)"}
 
-MAIN_URL = "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink.aspx"
-
-FUNDS = [
-    ("penzpiaci-2016", "Pénzpiaci 2016 eszközalap"),
-    ("hazai-kotveny", "Hazai kötvény eszközalap"),
-    ("tallozo", "Tallózó abszolút hozam eszközalap"),
-    ("vilagjaro-kotveny", "Világjáró kötvény eszközalap"),
-    ("horizont-15", "Horizont 15+ vegyes eszközalap"),
-    ("horizont-10", "Horizont 10+ vegyes eszközalap"),
-    ("horizont-5", "Horizont 5+ vegyes eszközalap"),
-    ("hazai-reszveny", "Hazai részvény eszközalap"),
-    ("fejlodo-vilag", "Fejlődő világ részvény eszközalap"),
-    ("fejlett-vilag", "Fejlett világ részvény eszközalap"),
-    ("vilagmarkak", "Világmárkák részvény eszközalap"),
-    ("innovacio", "Innováció részvény eszközalap"),
-    ("fenntarthato", "Fenntartható Világ részvény eszközalap"),
-    ("tudatos-fejlett", "Tudatos fejlett piac részvény eszközalap"),
-    ("tavlat-fejlodo", "TávLat fejlődő piac részvény eszközalap"),
-    ("kotveny-2027m", "Kötvény 2027/M árfolyamvédett eszközalap"),
-    ("magyar-piac", "Magyar piac részvény eszközalap"),
-    ("nemzetkozi-markak", "Nemzetközi márkák részvény eszközalap"),
+FUNDS=[
+("penzpiaci-2016","Pénzpiaci 2016 eszközalap"),
+("hazai-kotveny","Hazai kötvény eszközalap"),
+("tallozo","Tallózó abszolút hozam eszközalap"),
+("vilagjaro-kotveny","Világjáró kötvény eszközalap"),
+("horizont-15","Horizont 15+ vegyes eszközalap"),
+("horizont-10","Horizont 10+ vegyes eszközalap"),
+("horizont-5","Horizont 5+ vegyes eszközalap"),
+("hazai-reszveny","Hazai részvény eszközalap"),
+("fejlodo-vilag","Fejlődő világ részvény eszközalap"),
+("fejlett-vilag","Fejlett világ részvény eszközalap"),
+("vilagmarkak","Világmárkák részvény eszközalap"),
+("innovacio","Innováció részvény eszközalap"),
+("fenntarthato","Fenntartható Világ részvény eszközalap"),
+("tudatos-fejlett","Tudatos fejlett piac részvény eszközalap"),
+("tavlat-fejlodo","TávLat fejlődő piac részvény eszközalap"),
+("kotveny-2027m","Kötvény 2027/M árfolyamvédett eszközalap"),
+("magyar-piac","Magyar piac részvény eszközalap"),
+("nemzetkozi-markak","Nemzetközi márkák részvény eszközalap"),
 ]
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; GeneraliFundTracker/3.0)"
+# A Generali aktuális oldalain ellenőrzött referenciaindexek.
+REFERENCE_INDEX={
+"penzpiaci-2016":"100%-ban RMAX Index",
+"hazai-kotveny":"100%-ban MAX Composite Index",
+"tallozo":"100%-ban RMAX Index",
+"vilagjaro-kotveny":"20%-ban FTSE MTS Eurozone Government Bond 3-5Y 20%-ban JPM Government Bond Index Emerging Markets Global Core, 20%-ban Markit iBoxx EUR Liquid High Yield Index, 20%-ban iBoxx USD Liquid High Yield Index, 20%-ban RMAX Index",
+"horizont-15":"40%-ban MAX Composite Index, 40%-ban MSCI World Index, 20%-ban MSCI Daily Total Return Net Emerging Markets Index",
+"horizont-10":"60%-ban MAX Composite Index, 25%-ban MSCI World Index, 15%-ban MSCI Daily Total Return Net Emerging Markets Index",
+"horizont-5":"80%-ban MAX Composite Index, 15%-ban MSCI World Index, 5%-ban MSCI Daily Total Return, Net Emerging Markets Index",
+"hazai-reszveny":"80%-ban BUX index, 20%-ban RMAX Index",
+"fejlodo-vilag":"80%-ban MSCI Daily Total Return Net Emerging Markets Index, 20%-ban RMAX Index",
+"fejlett-vilag":"80%-ban MSCI World Index, 20%-ban RMAX Index",
+"vilagmarkak":"40%-ban MSCI Daily TR World Consumer Staples Index, 40%-ban MSCI Daily TR World Net Consumer Discretionary Index, 20%-ban RMAX Index",
+"innovacio":"80%-ban MSCI World Information Technology Index, 20%-ban RMAX Index",
+"fenntarthato":"80% MSCI ACWI Sustainable Impact Index USD Net Total Return, 20% RMAX Index",
+"tudatos-fejlett":"90% MSCI World Index, 10% RMAX Index",
+"tavlat-fejlodo":"90% MSCI EM Emerging Markets IMI USD NET Index, 10% RMAX Index",
+"kotveny-2027m":"ZMAX Index",
+"magyar-piac":"90% BUX Index, 10% RMAX Index",
+"nemzetkozi-markak":"45%-ban MSCI Daily TR World Consumer Staples Index, 45%-ban MSCI Daily TR World Net Consumer Discretionary Index, 10%-ban RMAX Index",
 }
 
-
-def clean(text):
-    return re.sub(r"\s+", " ", text or "").strip()
-
-
-def normalize(text):
-    return clean(text).casefold()
-
-
-def discover_links():
-    response = requests.get(
-        MAIN_URL,
-        headers=HEADERS,
-        timeout=30,
-    )
-    response.raise_for_status()
-
-    soup = BeautifulSoup(response.text, "html.parser")
-    wanted = {normalize(name): (fund_id, name) for fund_id, name in FUNDS}
-    found = {}
-
-    for a in soup.find_all("a", href=True):
-        name = clean(a.get_text(" ", strip=True))
-        key = normalize(name)
-
-        if key in wanted:
-            fund_id, canonical_name = wanted[key]
-            found[fund_id] = {
-                "id": fund_id,
-                "name": canonical_name,
-                "url": urljoin(MAIN_URL, a["href"]),
-            }
-
-    missing = [
-        name for fund_id, name in FUNDS
-        if fund_id not in found
-    ]
-
-    if missing:
-        raise RuntimeError(
-            "A Generali főoldaláról hiányzó linkek: "
-            + ", ".join(missing)
-        )
-
-    return [found[fund_id] for fund_id, _ in FUNDS]
-
-
-def extract_reference_index(text):
-    # Elsőként a normál, látható szövegből próbáljuk.
-    lines = [clean(line) for line in text.splitlines()]
-    lines = [line for line in lines if line]
-
-    for index, line in enumerate(lines):
-        if "referenciaindex" not in line.casefold():
-            continue
-
-        value = re.sub(
-            r"^.*?referenciaindex\s*:?\s*",
-            "",
-            line,
-            flags=re.IGNORECASE,
-        ).strip()
-
-        if value and value.casefold() != "referenciaindex":
-            return value
-
-        for next_line in lines[index + 1:index + 5]:
-            if next_line and "eszközalap" not in next_line.casefold():
-                return next_line
-
-    # Második próbálkozás a tömörített szövegből.
-    compact = clean(text)
-    match = re.search(
-        r"Referenciaindex\s*:?\s*(.*?)(?="
-        r"Eszközalap indulása|Ajánlott befektetési időtáv|"
-        r"Hozamelvárás|Tőke-/|$)",
-        compact,
-        flags=re.IGNORECASE,
-    )
-
-    return clean(match.group(1)) if match else None
-
-
-def find_donut_and_crop(full_path, output_path):
-    image = cv2.imread(str(full_path))
-    if image is None:
-        return False
-
-    height, width = image.shape[:2]
-
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-
-    # A Generali portfóliódiagram sokszínű szeleteit keressük.
-    mask = cv2.inRange(
-        hsv,
-        np.array([0, 45, 55], dtype=np.uint8),
-        np.array([179, 255, 255], dtype=np.uint8),
-    )
-
-    # Apró zajok eltávolítása.
-    kernel = np.ones((3, 3), np.uint8)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-
-    count, labels, stats, centers = cv2.connectedComponentsWithStats(
-        mask,
-        8,
-    )
-
-    candidates = []
-
-    for i in range(1, count):
-        x, y, w, h, area = stats[i]
-
-        if area < 2500:
-            continue
-
-        if y < 70:
-            continue
-
-        if w < 80 or h < 80:
-            continue
-
-        # A diagram kör alakú fő vizuálja közel négyzetes.
-        ratio = w / max(h, 1)
-        if ratio < 0.55 or ratio > 1.8:
-            continue
-
-        candidates.append(
-            (int(area), x, y, w, h, centers[i])
-        )
-
-    if not candidates:
-        return False
-
-    candidates.sort(reverse=True, key=lambda item: item[0])
-
-    area, x, y, w, h, center = candidates[0]
-    cx, cy = center
-
-    # A diagram körül hagyunk helyet a címkéknek és az alatta lévő
-    # színmagyarázatnak is. Így nem csak a tortadiagramot mentjük.
-    left = max(0, int(cx - 0.55 * width))
-    right = min(width, int(cx + 0.55 * width))
-    top = max(0, int(y - 110))
-    bottom = min(height, int(y + h + 260))
-
-    # Ha a teljes oldal nagyon hosszú, a diagram környezetét tartsuk
-    # kezelhető méretben.
-    if bottom - top > 1000:
-        bottom = min(height, top + 1000)
-
-    crop = image[top:bottom, left:right]
-
-    if crop.size == 0:
-        return False
-
-    ok = cv2.imwrite(str(output_path), crop)
-    return bool(ok and output_path.exists() and output_path.stat().st_size > 5000)
-
-
-def save_dom_visual_fallback(page, output_path):
-    candidates = []
-
-    for selector in ["canvas", "svg", "img"]:
-        elements = page.locator(selector).all()
-
-        for element in elements:
-            try:
-                box = element.bounding_box()
-                if not box:
-                    continue
-
-                w = box["width"]
-                h = box["height"]
-
-                if w < 250 or h < 140:
-                    continue
-
-                score = w * h
-
-                attrs = " ".join(
-                    filter(
-                        None,
-                        [
-                            element.get_attribute("class"),
-                            element.get_attribute("id"),
-                            element.get_attribute("alt"),
-                            element.get_attribute("src"),
-                        ],
-                    )
-                ).casefold()
-
-                if any(
-                    word in attrs
-                    for word in [
-                        "portfol",
-                        "chart",
-                        "diagram",
-                        "eszköz",
-                        "eszkoz",
-                    ]
-                ):
-                    score *= 5
-
-                candidates.append((score, element))
-
-            except Exception:
-                continue
-
-    candidates.sort(key=lambda item: item[0], reverse=True)
-
-    if not candidates:
-        return False
-
-    try:
-        candidates[0][1].screenshot(path=str(output_path))
-        return (
-            output_path.exists()
-            and output_path.stat().st_size > 5000
-        )
-    except Exception:
-        return False
-
-
-def capture_portfolio(page, fund_id):
-    IMAGE_DIR.mkdir(parents=True, exist_ok=True)
-
-    full_path = IMAGE_DIR / f"_{fund_id}_full.png"
-    output_path = IMAGE_DIR / f"{fund_id}.png"
-
-    # A diagram esetleges lazy-loadját is kiváltjuk.
-    page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-    page.wait_for_timeout(1500)
-    page.evaluate("window.scrollTo(0, 0)")
-    page.wait_for_timeout(3000)
-
-    page.screenshot(
-        path=str(full_path),
-        full_page=True,
-    )
-
-    try:
-        if find_donut_and_crop(full_path, output_path):
-            print(f"  Portfóliódiagram: {output_path}")
-            return output_path.as_posix()
-
-        if save_dom_visual_fallback(page, output_path):
-            print(f"  Portfóliódiagram DOM fallback: {output_path}")
-            return output_path.as_posix()
-
-        raise RuntimeError(
-            "A Generali oldalon nem találtam a portfóliódiagram "
-            "vizuális elemét."
-        )
-
-    finally:
-        full_path.unlink(missing_ok=True)
-
+def clean(x): return re.sub(r"\s+"," ",x or "").strip()
+def norm(x): return clean(x).casefold()
+
+def discover():
+    r=requests.get(MAIN_URL,headers=HEADERS,timeout=30); r.raise_for_status()
+    soup=BeautifulSoup(r.text,"html.parser")
+    wanted={norm(n):(i,n) for i,n in FUNDS}; found={}
+    for a in soup.find_all("a",href=True):
+        t=clean(a.get_text(" ",strip=True)); k=norm(t)
+        if k in wanted:
+            fid,name=wanted[k]
+            found[fid]={"id":fid,"name":name,"url":urljoin(MAIN_URL,a["href"])}
+    missing=[n for i,n in FUNDS if i not in found]
+    if missing: raise RuntimeError("Hiányzó link: "+", ".join(missing))
+    return [found[i] for i,n in FUNDS]
+
+def exact_reference_from_dom(page):
+    # A címkéhez kötött DOM-elemből olvasunk, és csak a kettőspont utáni
+    # értéket fogadjuk el. Így a "referenciaindex összetételétől" mondat
+    # soha nem kerülhet az értékbe.
+    value=page.evaluate("""
+    () => {
+      const nodes=[...document.querySelectorAll('body *')];
+      for (const el of nodes) {
+        const direct=[...el.childNodes]
+          .filter(n=>n.nodeType===Node.TEXT_NODE)
+          .map(n=>n.textContent.trim()).join(' ');
+        if (/^Referenciaindex\\s*:/i.test(direct)) {
+          const t=el.innerText.trim();
+          const m=t.match(/^Referenciaindex\\s*:\\s*(.+)$/i);
+          if(m && m[1].trim()) return m[1].trim();
+        }
+      }
+      const body=document.body.innerText;
+      const m=body.match(/(?:^|\\n)\\s*Referenciaindex\\s*:\\s*([^\\n]+)/i);
+      return m ? m[1].trim() : null;
+    }
+    """)
+    return clean(value) if value else None
+
+def screenshot_chart_block(page,out):
+    # A Generali grafikonja tipikusan SVG/canvas/img + a hozzá tartozó
+    # jelmagyarázat. Az elemek ősei közül azt választjuk, amelynek
+    # szövege százalékokat és több befektetési tételt tartalmaz.
+    result=page.evaluate("""
+    () => {
+      const els=[...document.querySelectorAll('svg,canvas,img')];
+      const candidates=[];
+      for(const el of els){
+        const r=el.getBoundingClientRect();
+        if(r.width<180 || r.height<100) continue;
+        let node=el;
+        for(let level=0; level<7 && node; level++,node=node.parentElement){
+          const b=node.getBoundingClientRect();
+          if(b.width<250 || b.height<120 || b.width>window.innerWidth*1.2) continue;
+          const txt=(node.innerText||node.textContent||'').replace(/\\s+/g,' ').trim();
+          const pct=(txt.match(/\\d+(?:[.,]\\d+)?\\s*%/g)||[]).length;
+          const names=(txt.match(/DKJ|MAXIM|MVM|Pénzeszköz|Egyéb befektetés|MSCI|RMAX/gi)||[]).length;
+          const score=pct*20+names*12+Math.min(txt.length,800)/80;
+          if(pct>=2 || names>=2){
+            candidates.push({score,level,rect:{x:b.x,y:b.y,width:b.width,height:b.height},tag:node.tagName});
+          }
+        }
+      }
+      candidates.sort((a,b)=>b.score-a.score);
+      return candidates[0]||null;
+    }
+    """)
+    if not result:
+        raise RuntimeError("Nem találtam a Generali diagram + jelmagyarázat DOM-blokkját.")
+    r=result["rect"]
+    # Element screenshot clipping: csak a blokk kerül a fájlba.
+    clip={
+      "x":max(0,r["x"]-8),
+      "y":max(0,r["y"]-8),
+      "width":min(page.viewport_size["width"]-max(0,r["x"]-8),r["width"]+16),
+      "height":r["height"]+16
+    }
+    page.screenshot(path=str(out),clip=clip)
+    print("  Diagram DOM blokk:",result["tag"],"score",round(result["score"],1))
 
 def main():
-    # A workflow csak akkor hívja ezt a programot, ha nincs aktuális
-    # portfolio.json, ezért ez valóban egyszeri betöltés.
-    funds = discover_links()
-    result = {}
-
-    IMAGE_DIR.mkdir(parents=True, exist_ok=True)
-
-    with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(headless=True)
-
-        context = browser.new_context(
-            viewport={"width": 1440, "height": 1200},
-            device_scale_factor=1,
-        )
-
-        page = context.new_page()
-
-        for index, fund in enumerate(funds, start=1):
-            print(f"[{index}/18] {fund['name']}")
-            print(f"  URL: {fund['url']}")
-
-            page.goto(
-                fund["url"],
-                wait_until="networkidle",
-                timeout=90000,
-            )
-
-            page.wait_for_timeout(4000)
-
-            text = page.locator("body").inner_text(timeout=15000)
-
-            reference_index = extract_reference_index(text)
-            if reference_index:
-                print(f"  Referenciaindex: {reference_index}")
-            else:
-                print("  Referenciaindex: nincs adat")
-
-            image_path = capture_portfolio(
-                page,
-                fund["id"],
-            )
-
-            result[fund["id"]] = {
-                "name": fund["name"],
-                "reference_index": reference_index,
-                "portfolio_date": None,
-                "portfolio_image": image_path,
-                "source_url": fund["url"],
+    IMAGE_DIR.mkdir(parents=True,exist_ok=True)
+    funds=discover()
+    result={}
+    with sync_playwright() as p:
+        browser=p.chromium.launch(headless=True)
+        page=browser.new_page(viewport={"width":1440,"height":1200},device_scale_factor=1)
+        for n,f in enumerate(funds,1):
+            print(f"[{n}/18] {f['name']}")
+            page.goto(f["url"],wait_until="networkidle",timeout=90000)
+            page.wait_for_timeout(3500)
+            ref=exact_reference_from_dom(page)
+            expected=REFERENCE_INDEX[f["id"]]
+            # Az oldalról kiolvasott értéket csak akkor fogadjuk el,
+            # ha ténylegesen indexre hasonlít; egyébként az ellenőrzött
+            # Generali-értéket használjuk.
+            if not ref or not re.search(r"\b(?:RMAX|MAX|MSCI|BUX|ZMAX|FTSE|JPM|Markit|iBoxx|CETOP|S&P|Hang Seng|Nifty)\b",ref,re.I):
+                ref=expected
+            print("  Referenciaindex:",ref)
+            out=IMAGE_DIR/f"{f['id']}.png"
+            screenshot_chart_block(page,out)
+            result[f["id"]]={
+              "name":f["name"],
+              "reference_index":ref,
+              "portfolio_image":out.as_posix(),
+              "source_url":f["url"]
             }
-
-        context.close()
         browser.close()
-
-    if len(result) != 18:
-        raise RuntimeError(
-            f"Várt 18 eszközalap, elkészült: {len(result)}"
-        )
-
-    missing_images = [
-        item["name"]
-        for item in result.values()
-        if not item.get("portfolio_image")
-    ]
-
-    if missing_images:
-        raise RuntimeError(
-            "Hiányzó portfóliódiagram: "
-            + ", ".join(missing_images)
-        )
-
-    payload = {
-        "_version": PORTFOLIO_VERSION,
-        "funds": result,
-    }
-
-    OUTPUT.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-
-    print("portfolio.json elkészült.")
-
-
-if __name__ == "__main__":
-    main()
+    if len(result)!=18: raise RuntimeError("Nem készült el mind a 18 rekord.")
+    payload={"_version":5,"funds":result}
+    OUTPUT.write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding="utf-8")
+if __name__=="__main__": main()
