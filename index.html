@@ -448,7 +448,7 @@
         : "Statikus portfólióadat";
 
       if (data.portfolio_image) {
-        portfolioImage.src = data.portfolio_image;
+        portfolioImage.src = `${data.portfolio_image}?v=3`;
         portfolioImage.alt = `${fund.name} – portfólió összetétele`;
         portfolioImage.style.display = "block";
         portfolioEmpty.style.display = "none";
@@ -512,7 +512,7 @@
     ])
       .then(([fundData, portfolioData]) => {
         funds = fundData;
-        portfolio = portfolioData;
+        portfolio = portfolioData.funds || {};
 
         if (!Array.isArray(funds) || funds.length !== 18) {
           throw new Error("A funds.json nem 18 eszközalapot tartalmaz.");
