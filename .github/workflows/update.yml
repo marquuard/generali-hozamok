@@ -41,27 +41,54 @@ jobs:
       - name: Python csomagok telepítése
         run: |
           python -m pip install --upgrade pip
-          pip install requests beautifulsoup4 pillow pytesseract
+          pip install requests beautifulsoup4 pillow opencv-python-headless playwright
 
-      - name: OCR csomag telepítése az egyszeri portfólió-kép felismeréshez
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y tesseract-ocr tesseract-ocr-hun
-
-      - name: Egyszeri Playwright telepítés a statikus portfólióképhez
+      - name: Statikus portfólióadatok frissítési állapotának ellenőrzése
+        id: portfolio_check
+        shell: bash
         run: |
           if [ ! -f portfolio.json ]; then
-            pip install playwright
-            playwright install --with-deps chromium
+            echo "refresh=true" >> "$GITHUB_OUTPUT"
+            echo "Nincs portfolio.json: első betöltés szükséges."
+            exit 0
           fi
 
-      - name: Statikus portfóliókép és referenciaindex egyszeri betöltése
-        run: |
-          if [ ! -f portfolio.json ]; then
-            python portfolio_init.py
+          VERSION=$(python - <<'PY'
+          import json
+
+          try:
+              with open("portfolio.json", "r", encoding="utf-8") as f:
+                  data = json.load(f)
+              print(data.get("_version", 0))
+          except Exception:
+              print(0)
+          PY
+          )
+
+          if [ "$VERSION" != "3" ]; then
+            echo "refresh=true" >> "$GITHUB_OUTPUT"
+            echo "Régi portfolio.json verzió: $VERSION. Újraépítés szükséges."
           else
-            echo "A portfolio.json már létezik, nem kérjük le újra."
+            echo "refresh=false" >> "$GITHUB_OUTPUT"
+            echo "A statikus portfólióadatok aktuálisak."
           fi
+
+      - name: Playwright Chromium telepítése
+        if: steps.portfolio_check.outputs.refresh == 'true'
+        run: |
+          playwright install --with-deps chromium
+
+      - name: Régi statikus portfólió törlése újraépítés előtt
+        if: steps.portfolio_check.outputs.refresh == 'true'
+        run: |
+          rm -f portfolio.json
+          rm -rf portfolio_images
+          mkdir -p portfolio_images
+
+      - name: Statikus referenciaindexek és portfóliódiagramok egyszeri lekérése
+        if: steps.portfolio_check.outputs.refresh == 'true'
+        run: |
+          python portfolio_init.py
 
       - name: Generali YTD adatok lekérése
         run: |
@@ -71,16 +98,15 @@ jobs:
         run: |
           python - <<'PY'
           import json
+          from pathlib import Path
 
           with open("funds.json", "r", encoding="utf-8") as file:
               funds = json.load(file)
 
-          if not isinstance(funds, list):
-              raise SystemExit("A funds.json nem lista.")
-
-          if len(funds) != 18:
+          if not isinstance(funds, list) or len(funds) != 18:
               raise SystemExit(
-                  f"A funds.json nem pontosan 18 rekordot tartalmaz: {len(funds)}"
+                  f"A funds.json nem pontosan 18 rekordot tartalmaz: "
+                  f"{len(funds) if isinstance(funds, list) else 'nem lista'}"
               )
 
           required = {"id", "name", "ytd", "date", "url"}
@@ -89,7 +115,7 @@ jobs:
               missing = required - set(fund.keys())
               if missing:
                   raise SystemExit(
-                      f"Hibás rekord #{index}: hiányzó mezők: {missing}"
+                      f"Hibás funds rekord #{index}: {missing}"
                   )
 
               if fund["ytd"] is not None and not isinstance(
@@ -100,31 +126,43 @@ jobs:
                   )
 
           with open("portfolio.json", "r", encoding="utf-8") as file:
-              portfolio = json.load(file)
+              portfolio_file = json.load(file)
 
-          if not isinstance(portfolio, dict):
-              raise SystemExit("A portfolio.json nem objektum.")
+          if portfolio_file.get("_version") != 3:
+              raise SystemExit("A portfolio.json nem a v3 formátum.")
+
+          portfolio = portfolio_file.get("funds", {})
 
           if len(portfolio) != 18:
               raise SystemExit(
-                  f"A portfolio.json nem pontosan 18 eszközalapot tartalmaz: {len(portfolio)}"
+                  f"A portfolio.json nem pontosan 18 eszközalapot tartalmaz: "
+                  f"{len(portfolio)}"
               )
 
-          missing_images = []
-          for fund_id, data in portfolio.items():
-              image = data.get("portfolio_image")
+          for fund in funds:
+              item = portfolio.get(fund["id"])
+              if not item:
+                  raise SystemExit(
+                      f"Hiányzó portfóliórekord: {fund['name']}"
+                  )
+
+              if not item.get("reference_index"):
+                  raise SystemExit(
+                      f"Hiányzó referenciaindex: {fund['name']}"
+                  )
+
+              image = item.get("portfolio_image")
               if not image:
-                  missing_images.append(fund_id)
+                  raise SystemExit(
+                      f"Hiányzó portfóliódiagram: {fund['name']}"
+                  )
 
-          if missing_images:
-              print(
-                  "Figyelem: ezekhez az eszközalapokhoz nem találtunk "
-                  f"automatikus portfólióképet: {', '.join(missing_images)}"
-              )
-          else:
-              print("Mind a 18 eszközalaphoz megvan a statikus portfóliókép.")
+              if not Path(image).exists():
+                  raise SystemExit(
+                      f"A portfóliókép fájlja nem létezik: {image}"
+                  )
 
-          print("18 YTD rekord és 18 statikus portfóliórekord rendben.")
+          print("18 YTD rekord, 18 referenciaindex és 18 portfóliódiagram rendben.")
           PY
 
       - name: Változások mentése
