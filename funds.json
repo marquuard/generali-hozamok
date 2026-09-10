@@ -1,128 +1,128 @@
 [
   {
-    "id": "f87af49524dccf56",
-    "name": "Fejlett világ részvény eszközalap",
-    "ytd": 5.16,
-    "date": null,
-    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/fejlettvilagreszvenyeszkozalap.aspx"
-  },
-  {
-    "id": "b6a443100df213a9",
-    "name": "Fejlődő világ részvény eszközalap",
-    "ytd": 13.54,
-    "date": null,
-    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/fejlodovilagreszvenyeszkozalap.aspx"
-  },
-  {
-    "id": "44a861ce396ed9a6",
-    "name": "Fenntartható Világ részvény eszközalap",
-    "ytd": 3.34,
-    "date": null,
-    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/fenntarthatovilagreszvenyeszkozalap.aspx"
-  },
-  {
-    "id": "b338dc3995be6aea",
-    "name": "Hazai kötvény eszközalap",
-    "ytd": 9.24,
-    "date": null,
-    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/hazaikotvenyeszkozalap.aspx"
-  },
-  {
-    "id": "5e8b287525f36f27",
-    "name": "Hazai részvény eszközalap",
-    "ytd": 27.57,
-    "date": null,
-    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/hazaireszvenyeszkozalap.aspx"
-  },
-  {
-    "id": "417a954d691b0f51",
-    "name": "Horizont 10+ vegyes eszközalap",
-    "ytd": 8.36,
-    "date": null,
-    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/horizont10eszkozalap.aspx"
-  },
-  {
-    "id": "73894fe69c282800",
-    "name": "Horizont 15+ vegyes eszközalap",
-    "ytd": 7.79,
-    "date": null,
-    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/horizont15eszkozalap.aspx"
-  },
-  {
-    "id": "84a350e5d886365c",
-    "name": "Horizont 5+ vegyes eszközalap",
-    "ytd": 8.71,
-    "date": null,
-    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/horizont5eszkozalap.aspx"
-  },
-  {
-    "id": "39b762ed8b9b5300",
-    "name": "Innováció részvény eszközalap",
-    "ytd": 18.22,
-    "date": null,
-    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/innovacioreszvenyeszkozalap.aspx"
-  },
-  {
-    "id": "33a4c0afc878a77b",
-    "name": "Kötvény 2027/M árfolyamvédett eszközalap",
-    "ytd": null,
-    "date": null,
-    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/kotveny2027meszkozalap.aspx"
-  },
-  {
-    "id": "c7ef4260c52ef227",
-    "name": "Magyar piac részvény eszközalap",
-    "ytd": 5.4,
-    "date": null,
-    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/magyarpiacreszvenyeszkozalap.aspx"
-  },
-  {
-    "id": "b29b687ff57070a5",
-    "name": "Nemzetközi márkák részvény eszközalap",
-    "ytd": -1.7,
-    "date": null,
-    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/nemzetkozimarkakpiacreszvenyeszkozalap.aspx"
-  },
-  {
-    "id": "941435c99065d2cf",
+    "id": "p-nzpiaci-2016-eszk-zalap",
     "name": "Pénzpiaci 2016 eszközalap",
     "ytd": 4.31,
-    "date": null,
+    "date": "2026.09.10",
     "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/penzpiaci2016eszkozalap.aspx"
   },
   {
-    "id": "d44b93f3a4e4bc45",
+    "id": "hazai-k-tv-ny-eszk-zalap",
+    "name": "Hazai kötvény eszközalap",
+    "ytd": 9.24,
+    "date": "2026.09.10",
+    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/hazaikotvenyeszkozalap.aspx"
+  },
+  {
+    "id": "tall-z-abszol-t-hozam-eszk-zalap",
     "name": "Tallózó abszolút hozam eszközalap",
     "ytd": 11.36,
-    "date": null,
+    "date": "2026.09.10",
     "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/tallozoabszoluthozameszkozalap.aspx"
   },
   {
-    "id": "e7a845047b5650ac",
-    "name": "Tudatos fejlett piac részvény eszközalap",
-    "ytd": 4.97,
-    "date": null,
-    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/tudatosfejlettpiacreszvenyeszkozalap.aspx"
-  },
-  {
-    "id": "52830aad04a6f49d",
-    "name": "TávLat fejlődő piac részvény eszközalap",
-    "ytd": 16.34,
-    "date": null,
-    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/tavlatfejlodopiacreszvenyeszkozalap.aspx"
-  },
-  {
-    "id": "122179072faa5eda",
+    "id": "vil-gj-r-k-tv-ny-eszk-zalap",
     "name": "Világjáró kötvény eszközalap",
-    "ytd": -2.68,
-    "date": null,
+    "ytd": 2.68,
+    "date": "2026.09.10",
     "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/vilagjarokotvenyeszkozalap.aspx"
   },
   {
-    "id": "176458353cc928ad",
+    "id": "horizont-15-vegyes-eszk-zalap",
+    "name": "Horizont 15+ vegyes eszközalap",
+    "ytd": 7.79,
+    "date": "2026.09.10",
+    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/horizont15eszkozalap.aspx"
+  },
+  {
+    "id": "horizont-10-vegyes-eszk-zalap",
+    "name": "Horizont 10+ vegyes eszközalap",
+    "ytd": 8.36,
+    "date": "2026.09.10",
+    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/horizont10eszkozalap.aspx"
+  },
+  {
+    "id": "horizont-5-vegyes-eszk-zalap",
+    "name": "Horizont 5+ vegyes eszközalap",
+    "ytd": 8.71,
+    "date": "2026.09.10",
+    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/horizont5eszkozalap.aspx"
+  },
+  {
+    "id": "hazai-r-szv-ny-eszk-zalap",
+    "name": "Hazai részvény eszközalap",
+    "ytd": 27.57,
+    "date": "2026.09.10",
+    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/hazaireszvenyeszkozalap.aspx"
+  },
+  {
+    "id": "fejl-d-vil-g-r-szv-ny-eszk-zalap",
+    "name": "Fejlődő világ részvény eszközalap",
+    "ytd": 13.54,
+    "date": "2026.09.10",
+    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/fejlodovilagreszvenyeszkozalap.aspx"
+  },
+  {
+    "id": "fejlett-vil-g-r-szv-ny-eszk-zalap",
+    "name": "Fejlett világ részvény eszközalap",
+    "ytd": 5.16,
+    "date": "2026.09.10",
+    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/fejlettvilagreszvenyeszkozalap.aspx"
+  },
+  {
+    "id": "vil-gm-rk-k-r-szv-ny-eszk-zalap",
     "name": "Világmárkák részvény eszközalap",
-    "ytd": -1.52,
-    "date": null,
+    "ytd": 1.52,
+    "date": "2026.09.10",
     "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/vilagmarkakreszvenyeszkozalap.aspx"
+  },
+  {
+    "id": "innov-ci-r-szv-ny-eszk-zalap",
+    "name": "Innováció részvény eszközalap",
+    "ytd": 18.22,
+    "date": "2026.09.10",
+    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/innovacioreszvenyeszkozalap.aspx"
+  },
+  {
+    "id": "fenntarthat-vil-g-r-szv-ny-eszk-zalap",
+    "name": "Fenntartható Világ részvény eszközalap",
+    "ytd": 3.34,
+    "date": "2023.02.27",
+    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/fenntarthatovilagreszvenyeszkozalap.aspx"
+  },
+  {
+    "id": "tudatos-fejlett-piac-r-szv-ny-eszk-zalap",
+    "name": "Tudatos fejlett piac részvény eszközalap",
+    "ytd": 4.97,
+    "date": "2026.09.10",
+    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/tudatosfejlettpiacreszvenyeszkozalap.aspx"
+  },
+  {
+    "id": "t-vlat-fejl-d-piac-r-szv-ny-eszk-zalap",
+    "name": "TávLat fejlődő piac részvény eszközalap",
+    "ytd": 16.34,
+    "date": "2026.09.10",
+    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/tavlatfejlodopiacreszvenyeszkozalap.aspx"
+  },
+  {
+    "id": "k-tv-ny-2027-m-rfolyamv-dett-eszk-zalap",
+    "name": "Kötvény 2027/M árfolyamvédett eszközalap",
+    "ytd": null,
+    "date": "2026.01.26",
+    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/kotveny2027meszkozalap.aspx"
+  },
+  {
+    "id": "magyar-piac-r-szv-ny-eszk-zalap",
+    "name": "Magyar piac részvény eszközalap",
+    "ytd": null,
+    "date": "2026.09.10",
+    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/magyarpiacreszvenyeszkozalap.aspx"
+  },
+  {
+    "id": "nemzetk-zi-m-rk-k-r-szv-ny-eszk-zalap",
+    "name": "Nemzetközi márkák részvény eszközalap",
+    "ytd": null,
+    "date": "2026.09.10",
+    "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/nemzetkozimarkakpiacreszvenyeszkozalap.aspx"
   }
 ]
