@@ -9,29 +9,29 @@ from bs4 import BeautifulSoup
 MAIN_URL = "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink.aspx"
 OUTPUT_FILE = "funds.json"
 
-ALLOWED_FUND_NAMES = [
-    "Pénzpiaci 2016 eszközalap",
-    "Hazai kötvény eszközalap",
-    "Tallózó abszolút hozam eszközalap",
-    "Világjáró kötvény eszközalap",
-    "Horizont 15+ vegyes eszközalap",
-    "Horizont 10+ vegyes eszközalap",
-    "Horizont 5+ vegyes eszközalap",
-    "Hazai részvény eszközalap",
-    "Fejlődő világ részvény eszközalap",
-    "Fejlett világ részvény eszközalap",
-    "Világmárkák részvény eszközalap",
-    "Innováció részvény eszközalap",
-    "Fenntartható Világ részvény eszközalap",
-    "Tudatos fejlett piac részvény eszközalap",
-    "TávLat fejlődő piac részvény eszközalap",
-    "Kötvény 2027/M árfolyamvédett eszközalap",
-    "Magyar piac részvény eszközalap",
-    "Nemzetközi márkák részvény eszközalap",
+FUNDS = [
+    ("penzpiaci-2016", "Pénzpiaci 2016 eszközalap"),
+    ("hazai-kotveny", "Hazai kötvény eszközalap"),
+    ("tallozo", "Tallózó abszolút hozam eszközalap"),
+    ("vilagjaro-kotveny", "Világjáró kötvény eszközalap"),
+    ("horizont-15", "Horizont 15+ vegyes eszközalap"),
+    ("horizont-10", "Horizont 10+ vegyes eszközalap"),
+    ("horizont-5", "Horizont 5+ vegyes eszközalap"),
+    ("hazai-reszveny", "Hazai részvény eszközalap"),
+    ("fejlodo-vilag", "Fejlődő világ részvény eszközalap"),
+    ("fejlett-vilag", "Fejlett világ részvény eszközalap"),
+    ("vilagmarkak", "Világmárkák részvény eszközalap"),
+    ("innovacio", "Innováció részvény eszközalap"),
+    ("fenntarthato", "Fenntartható Világ részvény eszközalap"),
+    ("tudatos-fejlett", "Tudatos fejlett piac részvény eszközalap"),
+    ("tavlat-fejlodo", "TávLat fejlődő piac részvény eszközalap"),
+    ("kotveny-2027m", "Kötvény 2027/M árfolyamvédett eszközalap"),
+    ("magyar-piac", "Magyar piac részvény eszközalap"),
+    ("nemzetkozi-markak", "Nemzetközi márkák részvény eszközalap"),
 ]
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; GeneraliFundTracker/1.0)"
+    "User-Agent": "Mozilla/5.0 (compatible; GeneraliFundTracker/2.0)"
 }
 
 session = requests.Session()
@@ -48,16 +48,22 @@ def normalize_name(text):
 
 def extract_fund_links(html):
     soup = BeautifulSoup(html, "html.parser")
-    allowed = {normalize_name(x): x for x in ALLOWED_FUND_NAMES}
+    wanted = {normalize_name(name): (fund_id, name) for fund_id, name in FUNDS}
     found = {}
 
     for a in soup.find_all("a", href=True):
         name = clean(a.get_text(" ", strip=True))
         key = normalize_name(name)
-        if key in allowed:
-            found[allowed[key]] = urljoin(MAIN_URL, a["href"])
 
-    missing = [x for x in ALLOWED_FUND_NAMES if x not in found]
+        if key in wanted:
+            fund_id, canonical_name = wanted[key]
+            found[fund_id] = {
+                "id": fund_id,
+                "name": canonical_name,
+                "url": urljoin(MAIN_URL, a["href"]),
+            }
+
+    missing = [name for fund_id, name in FUNDS if fund_id not in found]
     if missing:
         raise RuntimeError(
             "Hiányzó eszközalap-link(ek): " + ", ".join(missing)
@@ -66,7 +72,7 @@ def extract_fund_links(html):
     if len(found) != 18:
         raise RuntimeError(f"Várt 18 eszközalap, talált: {len(found)}")
 
-    return found
+    return [found[fund_id] for fund_id, _ in FUNDS]
 
 
 def parse_hungarian_number(value):
@@ -120,27 +126,28 @@ def main():
     response = session.get(MAIN_URL, timeout=30)
     response.raise_for_status()
 
-    links = extract_fund_links(response.text)
-
+    funds = extract_fund_links(response.text)
     records = []
 
-    for index, (name, url) in enumerate(links.items(), start=1):
-        print(f"[{index}/18] {name}")
+    for index, fund in enumerate(funds, start=1):
+        print(f"[{index}/18] {fund['name']}")
 
         try:
-            page = session.get(url, timeout=30)
+            page = session.get(fund["url"], timeout=30)
             page.raise_for_status()
-            text = BeautifulSoup(page.text, "html.parser").get_text(" ", strip=True)
+            text = BeautifulSoup(page.text, "html.parser").get_text(
+                " ", strip=True
+            )
 
             ytd = extract_ytd(text)
             date = extract_date(text)
 
             record = {
-                "id": re.sub(r"[^a-z0-9]+", "-", normalize_name(name)).strip("-"),
-                "name": name,
+                "id": fund["id"],
+                "name": fund["name"],
                 "ytd": ytd,
                 "date": date,
-                "url": url,
+                "url": fund["url"],
             }
 
             if ytd is None:
@@ -153,15 +160,17 @@ def main():
         except Exception as exc:
             print(f"  HIBA: {exc}")
             records.append({
-                "id": re.sub(r"[^a-z0-9]+", "-", normalize_name(name)).strip("-"),
-                "name": name,
+                "id": fund["id"],
+                "name": fund["name"],
                 "ytd": None,
                 "date": datetime.now().strftime("%Y.%m.%d"),
-                "url": url,
+                "url": fund["url"],
             })
 
     if len(records) != 18:
-        raise RuntimeError(f"A feldolgozás eredménye nem 18 rekord: {len(records)}")
+        raise RuntimeError(
+            f"A feldolgozás eredménye nem 18 rekord: {len(records)}"
+        )
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as file:
         json.dump(records, file, ensure_ascii=False, indent=2)
