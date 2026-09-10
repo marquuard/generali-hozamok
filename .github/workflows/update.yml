@@ -4,10 +4,6 @@ on:
   workflow_dispatch:
 
   schedule:
-    # Napi 3 automatikus futás
-    # 06:15 UTC
-    # 14:15 UTC
-    # 22:15 UTC
     - cron: "15 6 * * *"
     - cron: "15 14 * * *"
     - cron: "15 22 * * *"
@@ -17,6 +13,7 @@ on:
       - main
     paths-ignore:
       - "funds.json"
+      - "portfolio.json"
 
 permissions:
   contents: write
@@ -28,183 +25,108 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-
   update-and-deploy:
-
     runs-on: ubuntu-latest
 
     steps:
-
-      # ======================================================
-      # Repository letöltése
-      # ======================================================
-
       - name: Repository letöltése
         uses: actions/checkout@v4
-
-
-      # ======================================================
-      # Python
-      # ======================================================
 
       - name: Python beállítása
         uses: actions/setup-python@v5
         with:
           python-version: "3.x"
 
+      - name: Alap Python csomagok
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4
 
-      # ======================================================
-      # Generali adatok lekérése
-      # ======================================================
+      - name: Statikus portfólió és referenciaindex egyszeri betöltése
+        run: |
+          if [ ! -f portfolio.json ]; then
+            pip install playwright
+            playwright install --with-deps chromium
+            python portfolio_init.py
+          else
+            echo "A portfolio.json már létezik, nem kérjük le újra."
+          fi
 
-      - name: Generali adatok lekérése
+      - name: Generali YTD adatok lekérése
         run: |
           python scraper.py
-
-
-      # ======================================================
-      # funds.json ellenőrzése
-      # ======================================================
 
       - name: Adatok ellenőrzése
         run: |
           python - <<'PY'
           import json
 
-          EXPECTED_FUNDS = 18
+          with open("funds.json", "r", encoding="utf-8") as file:
+              funds = json.load(file)
 
-          with open(
-              "funds.json",
-              "r",
-              encoding="utf-8"
-          ) as file:
-              data = json.load(file)
+          if not isinstance(funds, list):
+              raise SystemExit("A funds.json nem lista.")
 
-          if not isinstance(data, list):
+          if len(funds) != 18:
               raise SystemExit(
-                  "A funds.json nem lista."
+                  f"A funds.json nem pontosan 18 rekordot tartalmaz: {len(funds)}"
               )
 
-          if len(data) == 0:
-              raise SystemExit(
-                  "A funds.json üres."
-              )
+          required = {"id", "name", "ytd", "date", "url"}
 
-          if len(data) != EXPECTED_FUNDS:
-              raise SystemExit(
-                  f"Hibás eszközalap-darabszám: "
-                  f"{len(data)}. "
-                  f"Elvárt: {EXPECTED_FUNDS}."
-              )
-
-          required = {
-              "id",
-              "name",
-              "ytd",
-              "url"
-          }
-
-          no_ytd = []
-
-          for index, fund in enumerate(data):
-
-              missing = required - set(
-                  fund.keys()
-              )
+          for index, fund in enumerate(funds):
+              missing = required - set(fund.keys())
 
               if missing:
                   raise SystemExit(
-                      f"Hibás rekord #{index}: "
-                      f"hiányzó mezők: "
-                      f"{missing}"
+                      f"Hibás rekord #{index}: hiányzó mezők: {missing}"
                   )
 
-              # A YTD lehet:
-              # - int
-              # - float
-              # - null
-              #
-              # A null azt jelenti, hogy a Generali
-              # jelenleg nem közöl YTD adatot az alaphoz.
-
-              ytd = fund["ytd"]
-
-              if ytd is not None and not isinstance(
-                  ytd,
-                  (int, float)
+              if fund["ytd"] is not None and not isinstance(
+                  fund["ytd"], (int, float)
               ):
                   raise SystemExit(
-                      f"Hibás YTD érték: "
-                      f"{fund['name']}: "
-                      f"{ytd!r}"
+                      f"Hibás YTD érték: {fund['name']}"
                   )
 
-              if ytd is None:
-                  no_ytd.append(
-                      fund["name"]
-                  )
+          with open("portfolio.json", "r", encoding="utf-8") as file:
+              portfolio = json.load(file)
 
-          print(
-              f"Érvényes eszközalapok: "
-              f"{len(data)}"
-          )
+          if not isinstance(portfolio, dict):
+              raise SystemExit("A portfolio.json nem objektum.")
 
-          if no_ytd:
-              print()
-              print(
-                  "YTD adattal jelenleg nem rendelkező "
-                  "eszközalap(ok):"
+          if len(portfolio) != 18:
+              raise SystemExit(
+                  f"A portfolio.json nem pontosan 18 eszközalapot tartalmaz: {len(portfolio)}"
               )
 
-              for name in no_ytd:
-                  print(
-                      f"  - {name}"
+          for fund_id, data in portfolio.items():
+              if not data.get("portfolio"):
+                  raise SystemExit(
+                      f"Nincs portfólióadat: {fund_id}"
                   )
 
-          print()
-          print(
-              "A funds.json ellenőrzése sikeres."
-          )
+          print("18 YTD rekord és 18 statikus portfólió rendben.")
           PY
-
-
-      # ======================================================
-      # Változások mentése
-      # ======================================================
 
       - name: Változások mentése
         run: |
-          git config user.name \
-            "github-actions[bot]"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git config user.email \
-            "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git add funds.json
+          git add funds.json portfolio.json
 
           if git diff --cached --quiet; then
-            echo "A hozamadatok nem változtak."
+            echo "Nincs mentendő változás."
           else
-            git commit \
-              -m "Automatikus hozam frissítés"
-
+            git commit -m "Automatikus Generali adatfrissítés"
             git push
           fi
-
-
-      # ======================================================
-      # GitHub Pages artifact
-      # ======================================================
 
       - name: GitHub Pages artifact készítése
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
-
-
-      # ======================================================
-      # GitHub Pages publikálása
-      # ======================================================
 
       - name: GitHub Pages publikálása
         uses: actions/deploy-pages@v4
