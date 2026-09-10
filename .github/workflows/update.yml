@@ -1,0 +1,198 @@
+name: Generali hozamok frissítése
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: "15 6 * * *"
+    - cron: "15 14 * * *"
+    - cron: "15 22 * * *"
+
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "funds.json"
+      - "portfolio.json"
+      - "portfolio_images/**"
+      - ".portfolio_initialized_v3"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  update-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repository letöltése
+        uses: actions/checkout@v4
+
+      - name: Python beállítása
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Python csomagok telepítése
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4 pillow opencv-python-headless playwright
+
+      # A marker a biztos jelzője annak, hogy az egyszeri portfólió-
+      # inicializálás már sikeresen lefutott. Ez kiküszöböli a régi,
+      # v1/v2 formátumú portfolio.json problémáját.
+      - name: Egyszeri portfólióbetöltés szükségességének ellenőrzése
+        id: portfolio_check
+        shell: bash
+        run: |
+          if [ ! -f ".portfolio_initialized_v3" ]; then
+            echo "refresh=true" >> "$GITHUB_OUTPUT"
+            echo "Nincs v3 inicializálási jelző: a statikus portfólióadatokat most létrehozzuk."
+          else
+            echo "refresh=false" >> "$GITHUB_OUTPUT"
+            echo "A statikus portfólióadatok már inicializálva vannak."
+          fi
+
+      - name: Playwright Chromium telepítése
+        if: steps.portfolio_check.outputs.refresh == 'true'
+        run: |
+          playwright install --with-deps chromium
+
+      - name: Régi portfólióadatok törlése
+        if: steps.portfolio_check.outputs.refresh == 'true'
+        run: |
+          rm -f portfolio.json
+          rm -f .portfolio_initialized_v3
+          rm -rf portfolio_images
+          mkdir -p portfolio_images
+
+      - name: Statikus referenciaindexek és portfóliódiagramok létrehozása
+        if: steps.portfolio_check.outputs.refresh == 'true'
+        run: |
+          python portfolio_init.py
+
+      - name: v3 inicializálási jelző létrehozása
+        if: steps.portfolio_check.outputs.refresh == 'true'
+        run: |
+          printf '%s\n' "portfolio static data initialized" > .portfolio_initialized_v3
+
+      - name: Generali YTD adatok lekérése
+        run: |
+          python scraper.py
+
+      - name: Adatok ellenőrzése
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          with open("funds.json", "r", encoding="utf-8") as file:
+              funds = json.load(file)
+
+          if not isinstance(funds, list) or len(funds) != 18:
+              raise SystemExit(
+                  f"A funds.json nem pontosan 18 rekordot tartalmaz: "
+                  f"{len(funds) if isinstance(funds, list) else 'nem lista'}"
+              )
+
+          required = {"id", "name", "ytd", "date", "url"}
+
+          for index, fund in enumerate(funds):
+              missing = required - set(fund.keys())
+              if missing:
+                  raise SystemExit(
+                      f"Hibás funds rekord #{index}: {missing}"
+                  )
+
+              if fund["ytd"] is not None and not isinstance(
+                  fund["ytd"], (int, float)
+              ):
+                  raise SystemExit(
+                      f"Hibás YTD érték: {fund['name']}"
+                  )
+
+          if not Path("portfolio.json").exists():
+              raise SystemExit("Hiányzik a portfolio.json.")
+
+          with open("portfolio.json", "r", encoding="utf-8") as file:
+              portfolio_file = json.load(file)
+
+          if portfolio_file.get("_version") != 3:
+              raise SystemExit(
+                  "A portfolio.json nem a v3 formátum. "
+                  "Ha ez az első v3 futás, a portfolio_init.py lépésnek "
+                  "előtte sikeresen le kellett volna futnia."
+              )
+
+          portfolio = portfolio_file.get("funds", {})
+
+          if len(portfolio) != 18:
+              raise SystemExit(
+                  f"A portfolio.json nem pontosan 18 eszközalapot tartalmaz: "
+                  f"{len(portfolio)}"
+              )
+
+          for fund in funds:
+              item = portfolio.get(fund["id"])
+
+              if not item:
+                  raise SystemExit(
+                      f"Hiányzó portfóliórekord: {fund['name']}"
+                  )
+
+              if not item.get("reference_index"):
+                  raise SystemExit(
+                      f"Hiányzó referenciaindex: {fund['name']}"
+                  )
+
+              image = item.get("portfolio_image")
+
+              if not image:
+                  raise SystemExit(
+                      f"Hiányzó portfóliódiagram: {fund['name']}"
+                  )
+
+              if not Path(image).exists():
+                  raise SystemExit(
+                      f"A portfóliókép fájlja nem létezik: {image}"
+                  )
+
+          if not Path(".portfolio_initialized_v3").exists():
+              raise SystemExit(
+                  "Hiányzik a v3 inicializálási jelző."
+              )
+
+          print(
+              "Ellenőrzés rendben: "
+              "18 YTD rekord, 18 referenciaindex, "
+              "18 portfóliódiagram."
+          )
+          PY
+
+      - name: Változások mentése
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add funds.json portfolio.json portfolio_images .portfolio_initialized_v3
+
+          if git diff --cached --quiet; then
+            echo "Nincs mentendő változás."
+          else
+            git commit -m "Automatikus Generali adatfrissítés"
+            git push
+          fi
+
+      - name: GitHub Pages artifact készítése
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: GitHub Pages publikálása
+        uses: actions/deploy-pages@v4
