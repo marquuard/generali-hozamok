@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generali eszközalapok</title>
+
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem("generali-theme") === "dark") {
+          document.documentElement.classList.add("dark");
+        }
+      } catch (_) {}
+    })();
+  </script>
+
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --card: #ffffff;
+      --text: #161616;
+      --muted: #6c727a;
+      --border: #dfe2e6;
+      --input: #ffffff;
+      --accent: #b21f2d;
+      --positive: #16833b;
+      --negative: #bd1e2d;
+      --shadow: 0 10px 35px rgba(0,0,0,.08);
+    }
+
+    html.dark {
+      --bg: #111315;
+      --card: #1b1e21;
+      --text: #f2f4f5;
+      --muted: #aeb5bb;
+      --border: #343a40;
+      --input: #24282c;
+      --accent: #ef5262;
+      --positive: #49c978;
+      --negative: #ff6878;
+      --shadow: 0 10px 35px rgba(0,0,0,.35);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      transition: background .2s, color .2s;
+    }
+
+    .page {
+      width: min(1100px, calc(100% - 28px));
+      margin: 35px auto 70px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 26px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      text-align: center;
+      font-size: 25px;
+    }
+
+    .subtitle {
+      margin: 0 0 24px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .search-wrap {
+      position: relative;
+    }
+
+    #search,
+    #fundSelect {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: var(--input);
+      color: var(--text);
+      padding: 13px 15px;
+      font-size: 16px;
+      outline: none;
+    }
+
+    #search:focus,
+    #fundSelect:focus {
+      border-color: var(--accent);
+    }
+
+    #search {
+      padding-right: 48px;
+    }
+
+    #clearSearch {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 20px;
+      display: none;
+    }
+
+    .result-count {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 5px;
+    }
+
+    .result {
+      text-align: center;
+      border-top: 1px solid var(--border);
+      padding-top: 25px;
+    }
+
+    #fundName {
+      margin: 0;
+      font-size: 23px;
+    }
+
+    .date {
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .ytd-label {
+      margin-top: 25px;
+      color: var(--muted);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    #returnValue {
+      margin: 5px 0 0;
+      font-size: 46px;
+      font-weight: 700;
+    }
+
+    .positive { color: var(--positive); }
+    .negative { color: var(--negative); }
+    .neutral { color: var(--muted); }
+
+    .reference {
+      margin: 24px auto 0;
+      max-width: 850px;
+      padding: 15px 18px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      text-align: left;
+    }
+
+    .reference-title {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 6px;
+    }
+
+    .reference-value {
+      font-weight: 600;
+      line-height: 1.45;
+    }
+
+    .portfolio {
+      margin-top: 24px;
+      border-top: 1px solid var(--border);
+      padding-top: 25px;
+    }
+
+    .portfolio h2 {
+      margin: 0;
+      font-size: 19px;
+      text-align: left;
+    }
+
+    .portfolio-date {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .chart-wrap {
+      width: 100%;
+      overflow-x: auto;
+      margin-top: 10px;
+    }
+
+    .portfolio-image {
+      display: block;
+      width: 100%;
+      max-width: 1000px;
+      height: auto;
+      margin: 0 auto;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .portfolio-empty {
+      display: none;
+      color: var(--muted);
+      text-align: center;
+      padding: 40px 10px;
+    }
+
+    .source {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .source a {
+      color: var(--accent);
+    }
+
+    .error {
+      color: var(--negative);
+      padding: 20px;
+      text-align: center;
+    }
+
+    #themeToggle {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      z-index: 10;
+    }
+
+    #themeToggle svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+    }
+
+    @media (min-width: 700px) {
+      .controls {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 650px) {
+      .page {
+        margin-top: 15px;
+        width: min(100% - 16px, 1100px);
+      }
+
+      .card {
+        padding: 18px 14px;
+        border-radius: 14px;
+      }
+
+      h1 { font-size: 21px; }
+      #returnValue { font-size: 38px; }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="page">
+    <section class="card">
+      <h1>Generali eszközalapok</h1>
+      <p class="subtitle">Forint alapú eszközalapok II. · év elejétől számított hozam</p>
+
+      <div class="controls">
+        <div>
+          <div class="search-wrap">
+            <input id="search" type="search" placeholder="Eszközalap keresése..." autocomplete="off">
+            <button id="clearSearch" type="button" aria-label="Keresés törlése">×</button>
+          </div>
+          <div id="resultCount" class="result-count"></div>
+        </div>
+
+        <select id="fundSelect" aria-label="Eszközalap kiválasztása"></select>
+      </div>
+
+      <div id="content">
+        <div class="result">
+          <h2 id="fundName">Betöltés...</h2>
+          <div id="dateBadge" class="date"></div>
+          <div class="ytd-label">YTD hozam</div>
+          <div id="returnValue" class="neutral">–</div>
+
+          <div class="reference">
+            <div class="reference-title">Referenciaindex</div>
+            <div id="referenceValue" class="reference-value">–</div>
+          </div>
+
+          <div class="portfolio">
+            <h2>Portfólió összetétele</h2>
+            <div id="portfolioDate" class="portfolio-date"></div>
+            <div class="chart-wrap">
+              <img id="portfolioImage" class="portfolio-image" alt="Portfólió összetétele" loading="lazy">
+              <div id="portfolioEmpty" class="portfolio-empty">Nincs portfóliódiagram.</div>
+            </div>
+          </div>
+
+          <div class="source">
+            <a id="sourceLink" href="#" target="_blank" rel="noopener noreferrer">Generali eszközalap-oldal</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <button id="themeToggle" type="button" aria-label="Dark mode" title="Dark mode"></button>
+
+  <script>
+    const searchInput = document.getElementById("search");
+    const clearSearch = document.getElementById("clearSearch");
+    const fundSelect = document.getElementById("fundSelect");
+    const resultCount = document.getElementById("resultCount");
+    const fundName = document.getElementById("fundName");
+    const dateBadge = document.getElementById("dateBadge");
+    const returnValue = document.getElementById("returnValue");
+    const referenceValue = document.getElementById("referenceValue");
+    const portfolioDate = document.getElementById("portfolioDate");
+    const portfolioImage = document.getElementById("portfolioImage");
+    const portfolioEmpty = document.getElementById("portfolioEmpty");
+    const sourceLink = document.getElementById("sourceLink");
+    const themeToggle = document.getElementById("themeToggle");
+
+    let funds = [];
+    let portfolio = {};
+    let filteredFunds = [];
+
+    function normalize(text) {
+      return String(text || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function setThemeIcon() {
+      const dark = document.documentElement.classList.contains("dark");
+
+      themeToggle.innerHTML = dark
+        ? `<svg viewBox="0 0 24 24" aria-hidden="true">
+             <circle cx="12" cy="12" r="4"></circle>
+             <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
+           </svg>`
+        : `<svg viewBox="0 0 24 24" aria-hidden="true">
+             <path d="M21 12.8A8.5 8.5 0 0 1 11.2 3a8.5 8.5 0 1 0 9.8 9.8Z"></path>
+           </svg>`;
+
+      themeToggle.title = dark ? "Világos mód" : "Dark mode";
+      themeToggle.setAttribute("aria-label", dark ? "Világos mód" : "Dark mode");
+    }
+
+    themeToggle.addEventListener("click", () => {
+      const dark = document.documentElement.classList.toggle("dark");
+      localStorage.setItem("generali-theme", dark ? "dark" : "light");
+      setThemeIcon();
+    });
+
+    setThemeIcon();
+
+    function populateSelect(list) {
+      const current = fundSelect.value;
+      fundSelect.innerHTML = "";
+
+      list.forEach((fund) => {
+        const option = document.createElement("option");
+        option.value = fund.id;
+        option.textContent = fund.name;
+        fundSelect.appendChild(option);
+      });
+
+      if (list.some((fund) => fund.id === current)) {
+        fundSelect.value = current;
+      }
+    }
+
+    function showFund(fund) {
+      if (!fund) return;
+
+      fundName.textContent = fund.name;
+      dateBadge.textContent = fund.date ? `Adat: ${fund.date}` : "";
+
+      if (fund.ytd === null || fund.ytd === undefined) {
+        returnValue.textContent = "Nincs adat";
+        returnValue.className = "neutral";
+      } else {
+        const sign = fund.ytd > 0 ? "+" : "";
+        returnValue.textContent = `${sign}${fund.ytd.toFixed(2).replace(".", ",")}%`;
+        returnValue.className = fund.ytd > 0
+          ? "positive"
+          : fund.ytd < 0
+            ? "negative"
+            : "neutral";
+      }
+
+      sourceLink.href = fund.url;
+
+      const data = portfolio[fund.id];
+
+      if (!data) {
+        referenceValue.textContent = "Nincs adat";
+        portfolioDate.textContent = "";
+        portfolioImage.removeAttribute("src");
+        portfolioImage.style.display = "none";
+        portfolioEmpty.style.display = "block";
+        return;
+      }
+
+      referenceValue.textContent = data.reference_index || "Nincs adat";
+      portfolioDate.textContent = data.portfolio_date
+        ? `Portfólióadat dátuma: ${data.portfolio_date}`
+        : "Statikus portfólióadat";
+
+      if (data.portfolio_image) {
+        portfolioImage.src = `${data.portfolio_image}?v=3`;
+        portfolioImage.alt = `${fund.name} – portfólió összetétele`;
+        portfolioImage.style.display = "block";
+        portfolioEmpty.style.display = "none";
+      } else {
+        portfolioImage.removeAttribute("src");
+        portfolioImage.style.display = "none";
+        portfolioEmpty.style.display = "block";
+      }
+    }
+
+    function applySearch() {
+      const query = normalize(searchInput.value);
+
+      filteredFunds = funds.filter((fund) => {
+        return normalize(fund.name).includes(query);
+      });
+
+      populateSelect(filteredFunds);
+
+      resultCount.textContent = query
+        ? `${filteredFunds.length} találat`
+        : `${funds.length} eszközalap`;
+
+      clearSearch.style.display = query ? "block" : "none";
+
+      if (filteredFunds.length === 1) {
+        fundSelect.value = filteredFunds[0].id;
+        showFund(filteredFunds[0]);
+      } else if (filteredFunds.length > 0) {
+        const current = filteredFunds.find((fund) => fund.id === fundSelect.value);
+        showFund(current || filteredFunds[0]);
+      } else {
+        fundName.textContent = "Nincs találat";
+        dateBadge.textContent = "";
+        returnValue.textContent = "–";
+        returnValue.className = "neutral";
+        referenceValue.textContent = "–";
+        portfolioDate.textContent = "";
+        portfolioImage.removeAttribute("src");
+        portfolioImage.style.display = "none";
+        portfolioEmpty.style.display = "block";
+      }
+    }
+
+    searchInput.addEventListener("input", applySearch);
+
+    clearSearch.addEventListener("click", () => {
+      searchInput.value = "";
+      applySearch();
+      searchInput.focus();
+    });
+
+    fundSelect.addEventListener("change", () => {
+      const selected = funds.find((fund) => fund.id === fundSelect.value);
+      showFund(selected);
+    });
+
+    Promise.all([
+      fetch("funds.json", { cache: "no-store" }).then((r) => r.json()),
+      fetch("portfolio.json", { cache: "no-store" }).then((r) => r.json())
+    ])
+      .then(([fundData, portfolioData]) => {
+        funds = fundData;
+        portfolio = portfolioData.funds || {};
+
+        if (!Array.isArray(funds) || funds.length !== 18) {
+          throw new Error("A funds.json nem 18 eszközalapot tartalmaz.");
+        }
+
+        filteredFunds = funds;
+        populateSelect(funds);
+        resultCount.textContent = `${funds.length} eszközalap`;
+        showFund(funds[0]);
+      })
+      .catch((error) => {
+        console.error(error);
+        document.getElementById("content").innerHTML =
+          '<div class="error">Az adatok betöltése nem sikerült.</div>';
+      });
+  </script>
+</body>
+</html>
