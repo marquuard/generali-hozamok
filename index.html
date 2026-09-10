@@ -211,11 +211,21 @@
       margin-top: 10px;
     }
 
-    #portfolioChart {
+    .portfolio-image {
       display: block;
       width: 100%;
-      min-width: 700px;
-      height: 430px;
+      max-width: 1000px;
+      height: auto;
+      margin: 0 auto;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .portfolio-empty {
+      display: none;
+      color: var(--muted);
+      text-align: center;
+      padding: 40px 10px;
     }
 
     .source {
@@ -317,7 +327,8 @@
             <h2>Portfólió összetétele</h2>
             <div id="portfolioDate" class="portfolio-date"></div>
             <div class="chart-wrap">
-              <svg id="portfolioChart" viewBox="0 0 1000 430" preserveAspectRatio="xMidYMid meet"></svg>
+              <img id="portfolioImage" class="portfolio-image" alt="Portfólió összetétele" loading="lazy">
+              <div id="portfolioEmpty" class="portfolio-empty">Nincs portfóliódiagram.</div>
             </div>
           </div>
 
@@ -341,7 +352,8 @@
     const returnValue = document.getElementById("returnValue");
     const referenceValue = document.getElementById("referenceValue");
     const portfolioDate = document.getElementById("portfolioDate");
-    const portfolioChart = document.getElementById("portfolioChart");
+    const portfolioImage = document.getElementById("portfolioImage");
+    const portfolioEmpty = document.getElementById("portfolioEmpty");
     const sourceLink = document.getElementById("sourceLink");
     const themeToggle = document.getElementById("themeToggle");
 
@@ -424,7 +436,9 @@
       if (!data) {
         referenceValue.textContent = "Nincs adat";
         portfolioDate.textContent = "";
-        portfolioChart.innerHTML = "";
+        portfolioImage.removeAttribute("src");
+        portfolioImage.style.display = "none";
+        portfolioEmpty.style.display = "block";
         return;
       }
 
@@ -433,107 +447,16 @@
         ? `Portfólióadat dátuma: ${data.portfolio_date}`
         : "Statikus portfólióadat";
 
-      drawPortfolio(data.portfolio || []);
-    }
-
-    function drawPortfolio(items) {
-      portfolioChart.innerHTML = "";
-
-      if (!items.length) {
-        const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        text.setAttribute("x", "500");
-        text.setAttribute("y", "215");
-        text.setAttribute("text-anchor", "middle");
-        text.setAttribute("fill", "currentColor");
-        text.textContent = "Nincs portfólióadat";
-        portfolioChart.appendChild(text);
-        return;
+      if (data.portfolio_image) {
+        portfolioImage.src = data.portfolio_image;
+        portfolioImage.alt = `${fund.name} – portfólió összetétele`;
+        portfolioImage.style.display = "block";
+        portfolioEmpty.style.display = "none";
+      } else {
+        portfolioImage.removeAttribute("src");
+        portfolioImage.style.display = "none";
+        portfolioEmpty.style.display = "block";
       }
-
-      const width = 1000;
-      const height = 430;
-      const cx = 390;
-      const cy = 215;
-      const outer = 128;
-      const inner = 78;
-
-      const colors = [
-        "#b35b63", "#6e1726", "#e48a6c", "#276d7b",
-        "#b7b9ba", "#7f1d1d", "#dfad73", "#3e6f76",
-        "#9e9e9e", "#d96d4e", "#6b3d42", "#5c8d8a",
-        "#8f6b5b", "#b77c82", "#4d5960"
-      ];
-
-      const total = items.reduce((sum, item) => sum + Number(item.percentage || 0), 0);
-      let angle = -Math.PI / 2;
-
-      function polar(r, a) {
-        return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
-      }
-
-      function pathFor(start, end) {
-        const large = end - start > Math.PI ? 1 : 0;
-        const [x1, y1] = polar(outer, start);
-        const [x2, y2] = polar(outer, end);
-        const [ix1, iy1] = polar(inner, end);
-        const [ix2, iy2] = polar(inner, start);
-
-        return [
-          `M ${x1} ${y1}`,
-          `A ${outer} ${outer} 0 ${large} 1 ${x2} ${y2}`,
-          `L ${ix1} ${iy1}`,
-          `A ${inner} ${inner} 0 ${large} 0 ${ix2} ${iy2}`,
-          "Z"
-        ].join(" ");
-      }
-
-      items.forEach((item, index) => {
-        const value = Number(item.percentage || 0);
-        const sweep = (value / total) * Math.PI * 2;
-        const end = angle + sweep;
-
-        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        path.setAttribute("d", pathFor(angle, end));
-        path.setAttribute("fill", colors[index % colors.length]);
-        path.setAttribute("stroke", getComputedStyle(document.body).backgroundColor);
-        path.setAttribute("stroke-width", "2");
-        portfolioChart.appendChild(path);
-
-        const mid = angle + sweep / 2;
-        const side = Math.cos(mid) >= 0 ? 1 : -1;
-
-        const p1 = polar(outer + 5, mid);
-        const p2 = polar(outer + 30, mid);
-        const p3 = [side > 0 ? 705 : 75, p2[1]];
-
-        const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
-        line.setAttribute("points", `${p1[0]},${p1[1]} ${p2[0]},${p2[1]} ${p3[0]},${p3[1]}`);
-        line.setAttribute("fill", "none");
-        line.setAttribute("stroke", "#aeb2b5");
-        line.setAttribute("stroke-width", "1");
-        portfolioChart.appendChild(line);
-
-        const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        label.setAttribute("x", side > 0 ? 720 : 60);
-        label.setAttribute("y", p3[1] + 5);
-        label.setAttribute("text-anchor", side > 0 ? "start" : "end");
-        label.setAttribute("font-size", "16");
-        label.setAttribute("fill", "currentColor");
-
-        const name = item.name || "Ismeretlen";
-        const shortened = name.length > 23 ? name.slice(0, 22) + "…" : name;
-        label.textContent = `${shortened} ${value.toFixed(2).replace(".", ",")}%`;
-        portfolioChart.appendChild(label);
-
-        angle = end;
-      });
-
-      const center = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      center.setAttribute("cx", cx);
-      center.setAttribute("cy", cy);
-      center.setAttribute("r", inner);
-      center.setAttribute("fill", getComputedStyle(document.body).getPropertyValue("--card"));
-      portfolioChart.appendChild(center);
     }
 
     function applySearch() {
@@ -564,7 +487,9 @@
         returnValue.className = "neutral";
         referenceValue.textContent = "–";
         portfolioDate.textContent = "";
-        portfolioChart.innerHTML = "";
+        portfolioImage.removeAttribute("src");
+        portfolioImage.style.display = "none";
+        portfolioEmpty.style.display = "block";
       }
     }
 
