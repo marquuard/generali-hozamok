@@ -301,6 +301,12 @@
       margin: 0 auto;
       border-radius: 8px;
       background: transparent;
+      cursor: zoom-in;
+      transition: transform .15s ease;
+    }
+
+    .portfolio-image:hover {
+      transform: scale(1.01);
     }
 
     .portfolio-empty {
@@ -325,6 +331,31 @@
       color: var(--negative);
       padding: 20px;
       text-align: center;
+    }
+
+    /* Lightbox kinagyítás stílus */
+    #imageModal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      cursor: zoom-out;
+      padding: 20px;
+    }
+
+    #imageModal img {
+      max-width: 95vw;
+      max-height: 90vh;
+      object-fit: contain;
+      cursor: zoom-out;
+      border-radius: 12px;
     }
 
     #themeToggle {
@@ -421,7 +452,7 @@
             <h2>Portfólió összetétele</h2>
             <div id="portfolioDate" class="portfolio-date"></div>
             <div class="chart-wrap">
-              <img id="portfolioImage" class="portfolio-image" alt="Portfólió összetétele" loading="lazy">
+              <img id="portfolioImage" class="portfolio-image" alt="Portfólió összetétele" loading="lazy" title="Kattints a kinagyításhoz">
               <div id="portfolioEmpty" class="portfolio-empty">Nincs portfóliódiagram.</div>
             </div>
           </div>
@@ -433,6 +464,11 @@
       </div>
     </section>
   </main>
+
+  <!-- Kinagyított kép modal (lightbox) -->
+  <div id="imageModal" aria-hidden="true">
+    <img id="modalImg" alt="Kinagyított diagram">
+  </div>
 
   <button id="themeToggle" type="button" aria-label="Dark mode" title="Dark mode"></button>
 
@@ -454,11 +490,13 @@
     const myPortfolioBtn = document.getElementById("myPortfolioBtn");
     const myPortfolioList = document.getElementById("myPortfolioList");
 
+    const imageModal = document.getElementById("imageModal");
+    const modalImg = document.getElementById("modalImg");
+
     let funds = [];
     let portfolio = {};
     let filteredFunds = [];
 
-    // A saját portfólióhoz tartozó eszközalapok azonosítói
     const MY_PORTFOLIO_IDS = [
       "horizont-10",
       "hazai-reszveny",
@@ -499,7 +537,25 @@
 
     setThemeIcon();
 
-    // Saját portfólió harmonika nyitás/csukás
+    // Kép kinagyítása / bezárása eseménykezelők
+    portfolioImage.addEventListener("click", () => {
+      if (portfolioImage.src && portfolioImage.style.display !== "none") {
+        modalImg.src = portfolioImage.src;
+        imageModal.style.display = "flex";
+      }
+    });
+
+    imageModal.addEventListener("click", () => {
+      imageModal.style.display = "none";
+    });
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && imageModal.style.display === "flex") {
+        imageModal.style.display = "none";
+      }
+    });
+
+    // Saját portfólió harmonika
     myPortfolioBtn.addEventListener("click", () => {
       const isClosed = myPortfolioList.style.display === "" || myPortfolioList.style.display === "none";
       myPortfolioList.style.display = isClosed ? "block" : "none";
@@ -509,7 +565,6 @@
     function renderMyPortfolio(fundList) {
       const matched = fundList.filter((f) => MY_PORTFOLIO_IDS.includes(f.id));
 
-      // Csökkenő sorrendbe rendezés az YTD hozam alapján
       matched.sort((a, b) => {
         const valA = a.ytd !== null && a.ytd !== undefined ? a.ytd : -9999;
         const valB = b.ytd !== null && b.ytd !== undefined ? b.ytd : -9999;
@@ -710,7 +765,6 @@
         resultCount.textContent = `${funds.length} eszközalap`;
         showFund(funds[0]);
 
-        // Saját portfólió kártyák legenerálása az adatokból
         renderMyPortfolio(funds);
       })
       .catch((error) => {
