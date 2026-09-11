@@ -188,12 +188,12 @@ def exact_reference_from_dom(page):
 
 
 def dismiss_cookie_banner(page):
-    """Kezeli a sütis panelt és eltávolítja a sötét hátteret."""
+    """Eltávolítja a sütis panelt és a hátteret."""
     try:
         btn = page.locator("button:has-text('Mindegyik engedélyezése'), a:has-text('Mindegyik engedélyezése')").first
         if btn.is_visible():
             btn.click(timeout=1500)
-            page.wait_for_timeout(600)
+            page.wait_for_timeout(500)
     except Exception:
         pass
 
@@ -220,149 +220,117 @@ def dismiss_cookie_banner(page):
         pass
 
 
-def prepare_transparent_contrast_styles(page):
+def isolate_and_style_chart_container(page):
     """
-    1. Transzparensé teszi a hátteret.
-    2. Világos kontúrt ad a fekete szövegeknek, hogy mind night,
-       mind light módban élesen olvashatóak maradjanak.
-    """
-    page.evaluate(
-        """
-        () => {
-          // Háttér átlátszóvá tétele
-          document.documentElement.style.background = 'transparent';
-          document.body.style.background = 'transparent';
-          
-          const allElements = document.querySelectorAll('*');
-          allElements.forEach(el => {
-            const bg = window.getComputedStyle(el).backgroundColor;
-            if (bg === 'rgb(255, 255, 255)' || bg === 'white') {
-              el.style.backgroundColor = 'transparent';
-            }
-          });
-
-          // Kontrasztos feliratok: finom körvonal / árnyék,
-          // ami sötét háttéren kiemeli a betűket, fehér háttéren észrevétlen marad.
-          const style = document.createElement('style');
-          style.innerHTML = `
-            text, tspan, h1, h2, h3, h4, span, b, strong, div {
-              text-shadow: 
-                -1px -1px 2px rgba(255, 255, 255, 0.9),
-                 1px -1px 2px rgba(255, 255, 255, 0.9),
-                -1px  1px 2px rgba(255, 255, 255, 0.9),
-                 1px  1px 2px rgba(255, 255, 255, 0.9),
-                 0px  0px 3px rgba(255, 255, 255, 0.95) !important;
-            }
-            polyline, path[stroke="#ffffff"], path[stroke="white"] {
-              stroke: rgba(180, 180, 180, 0.8) !important;
-            }
-          `;
-          document.head.appendChild(style);
-        }
-        """
-    )
-
-
-def get_donut_chart_clip_rect(page):
-    """
-    Kiszámítja a kördiagram, cím és jelmagyarázat pontos határoló téglalapját.
+    1. Megkeresi a kördiagramot tartalmazó legszűkebb dobozt (Cím + Diagram + Jelmagyarázat).
+    2. Kizár minden felesleges külső szekciót (Hozamok gomb, Fogalommagyarázat).
+    3. Beállítja az átlátszó hátteret és a világos/sötét módban is olvasható kontrasztot.
     """
     return page.evaluate(
         """
         () => {
-          const visible = el => {
-            const r = el.getBoundingClientRect();
-            const s = getComputedStyle(el);
-            return (
-              r.width > 0 &&
-              r.height > 0 &&
-              s.display !== 'none' &&
-              s.visibility !== 'hidden' &&
-              Number(s.opacity || 1) > 0
-            );
-          };
+          // 1. Kördiagram SVG megkeresése (textContent-et vizsgálunk, mert innerText nem lát az SVG-be)
+          const svgs = [...document.querySelectorAll('svg')];
+          let donutSvg = svgs.find(s => s.textContent && s.textContent.includes('%'));
+          
+          if (!donutSvg && svgs.length > 0) {
+            donutSvg = svgs[svgs.length - 1];
+          }
 
-          const mediaElements = [...document.querySelectorAll('svg, canvas')].filter(visible);
-          let donutMedia = null;
+          if (!donutSvg) return null;
 
-          for (const media of mediaElements) {
-            const r = media.getBoundingClientRect();
-            if (r.width < 150 || r.height < 150) continue;
+          // 2. Felfelé lépkedés a DOM-ban a legszűkebb közös szülő konténerhez
+          let curr = donutSvg.parentElement;
+          let target = curr;
+
+          while (curr && curr !== document.body && curr !== document.documentElement) {
+            const text = curr.textContent || '';
             
-            const html = media.outerHTML.toLowerCase();
-            const parentText = (media.parentElement?.parentElement?.innerText || '').toLowerCase();
-            
-            if (html.includes('pie') || html.includes('slice') || parentText.includes('%') || parentText.includes('mák') || parentText.includes('összetétel')) {
-              donutMedia = media;
+            // Ha elérjük a szomszédos modulokat, MEG KELL ÁLLNI az előző szintnél!
+            if (
+              text.includes('FOGALOMMAGYARÁZAT') ||
+              text.includes('HOZAMOK MEGJELENÍTÉSE') ||
+              text.includes('Eszközalap árfolyama és nettó eszközértéke') ||
+              text.includes('Alapvető információk') ||
+              text.includes('Dokumentumok')
+            ) {
               break;
             }
+            target = curr;
+            curr = curr.parentElement;
           }
 
-          if (!donutMedia && mediaElements.length > 0) {
-            donutMedia = mediaElements[mediaElements.length - 1];
+          if (!target) return null;
+
+          // 3. Hátterek törlése (transzparens PNG elérése)
+          document.documentElement.style.setProperty('background', 'transparent', 'important');
+          document.body.style.setProperty('background', 'transparent', 'important');
+
+          let p = target;
+          while (p) {
+            p.style.setProperty('background', 'transparent', 'important');
+            p.style.setProperty('background-color', 'transparent', 'important');
+            p.style.setProperty('background-image', 'none', 'important');
+            p.style.setProperty('box-shadow', 'none', 'important');
+            p = p.parentElement;
           }
 
-          if (!donutMedia) return null;
-
-          donutMedia.scrollIntoView({ block: 'center', inline: 'center' });
-          const mediaRect = donutMedia.getBoundingClientRect();
-
-          // Címsor megkeresése
-          let titleRect = null;
-          const headers = [...document.querySelectorAll('h1, h2, h3, h4, strong, b, div, span')].filter(visible);
-          for (const h of headers) {
-            const txt = (h.innerText || '').trim();
-            if (txt.match(/eszközalap\\s*\\(\\d{4}/i) || txt.includes('Portfólió összetétel')) {
-              const r = h.getBoundingClientRect();
-              if (r.bottom <= mediaRect.top + 60 && r.bottom >= mediaRect.top - 150) {
-                titleRect = r;
-                break;
-              }
+          // A dobozon belül is eltávolítjuk a fehér háttereket, kivéve a kis színes négyzeteket
+          target.querySelectorAll('*').forEach(el => {
+            const r = el.getBoundingClientRect();
+            // A jelmagyarázat színes négyzeteit nem bántjuk
+            if (r.width > 0 && r.width <= 25 && r.height > 0 && r.height <= 25) {
+              return;
             }
-          }
+            el.style.setProperty('background', 'transparent', 'important');
+            el.style.setProperty('background-color', 'transparent', 'important');
+            el.style.setProperty('background-image', 'none', 'important');
+            el.style.setProperty('box-shadow', 'none', 'important');
+          });
 
-          // Jelmagyarázat dobozának megkeresése
-          let legendRect = null;
-          const candidates = [...document.querySelectorAll('div, ul, table')].filter(visible);
-          for (const c of candidates) {
-            const txt = (c.innerText || '').trim();
-            const r = c.getBoundingClientRect();
-            if (r.top >= mediaRect.top && r.top <= mediaRect.bottom + 120) {
-              const matchCount = (txt.match(/MÁK|DKJ|MAX|Egyéb befektetés|Részvény|Kötvény/gi) || []).length;
-              if (matchCount >= 2 && r.height > 20) {
-                legendRect = r;
-                break;
+          // 4. Fehér kontúr / text-shadow a szövegeknek: sötét és világos témában is éles marad
+          const styleId = '__isolated_chart_style';
+          if (!document.getElementById(styleId)) {
+            const style = document.createElement('style');
+            style.id = styleId;
+            style.innerHTML = `
+              #__isolated_chart_box text,
+              #__isolated_chart_box tspan {
+                paint-order: stroke fill !important;
+                stroke: rgba(255, 255, 255, 0.95) !important;
+                stroke-width: 3.5px !important;
+                stroke-linecap: round !important;
+                stroke-linejoin: round !important;
+                font-weight: bold !important;
               }
-            }
+              #__isolated_chart_box h1,
+              #__isolated_chart_box h2,
+              #__isolated_chart_box h3,
+              #__isolated_chart_box h4,
+              #__isolated_chart_box p,
+              #__isolated_chart_box span,
+              #__isolated_chart_box div,
+              #__isolated_chart_box b,
+              #__isolated_chart_box strong {
+                text-shadow:
+                  -1.5px -1.5px 0 #ffffff,
+                   1.5px -1.5px 0 #ffffff,
+                  -1.5px  1.5px 0 #ffffff,
+                   1.5px  1.5px 0 #ffffff,
+                   0px 0px 4px #ffffff,
+                   0px 0px 8px rgba(255, 255, 255, 0.9) !important;
+              }
+              #__isolated_chart_box polyline,
+              #__isolated_chart_box path.amcharts-pie-tick {
+                filter: drop-shadow(0px 0px 1px #ffffff) !important;
+              }
+            `;
+            document.head.appendChild(style);
           }
 
-          const top = titleRect ? titleRect.top - 15 : mediaRect.top - 20;
-          const bottom = legendRect ? legendRect.bottom + 20 : mediaRect.bottom + 40;
-          
-          let left = Math.min(mediaRect.left, legendRect ? legendRect.left : mediaRect.left);
-          let right = Math.max(mediaRect.right, legendRect ? legendRect.right : mediaRect.right);
-
-          if (titleRect) {
-            left = Math.min(left, titleRect.left);
-            right = Math.max(right, titleRect.right);
-          }
-
-          left = Math.max(0, left - 25);
-          right = Math.min(window.innerWidth, right + 25);
-
-          const width = right - left;
-          const height = bottom - top;
-
-          if (width > 200 && height > 150) {
-            return {
-              x: left + window.scrollX,
-              y: top + window.scrollY,
-              width: width,
-              height: height
-            };
-          }
-
-          return null;
+          target.id = '__isolated_chart_box';
+          target.scrollIntoView({ block: 'center', inline: 'center' });
+          return '#__isolated_chart_box';
         }
         """
     )
@@ -370,40 +338,34 @@ def get_donut_chart_clip_rect(page):
 
 def screenshot_chart_block(page, output_file):
     dismiss_cookie_banner(page)
-    prepare_transparent_contrast_styles(page)
 
-    clip_box = get_donut_chart_clip_rect(page)
+    selector = isolate_and_style_chart_container(page)
 
-    if clip_box:
+    if selector:
         try:
-            page.evaluate(f"window.scrollTo(0, {max(0, clip_box['y'] - 100)})")
+            locator = page.locator(selector)
+            locator.scroll_into_view_if_needed()
             page.wait_for_timeout(400)
             dismiss_cookie_banner(page)
-            prepare_transparent_contrast_styles(page)
 
-            fresh_clip = get_donut_chart_clip_rect(page)
-            target_clip = fresh_clip if fresh_clip else clip_box
-
-            page.screenshot(
+            locator.screenshot(
                 path=str(output_file),
-                clip={
-                    "x": max(0, target_clip["x"]),
-                    "y": max(0, target_clip["y"]),
-                    "width": target_clip["width"],
-                    "height": target_clip["height"],
-                },
                 omit_background=True,
                 animations="disabled"
             )
 
             if output_file.exists() and output_file.stat().st_size >= 1000:
-                print(f"   Transzparens diagram sikeresen mentve: {output_file.name}")
+                print(f"   Csak a tiszta diagram és jelmagyarázat mentve: {output_file.name}")
                 return
         except Exception as e:
-            print(f"   Clip hiba ({e}), fallback mentés...")
+            print(f"   Szelektoros mentési hiba ({e}), tartalék vágás...")
 
-    # Fallback mentés átlátszó háttérrel
-    page.screenshot(path=str(output_file), omit_background=True, full_page=False)
+    # Végső fallback kizárólag a diagram SVG-re
+    try:
+        svg_elem = page.locator("svg:has-text('%')").last
+        svg_elem.screenshot(path=str(output_file), omit_background=True)
+    except Exception:
+        page.screenshot(path=str(output_file), omit_background=True, full_page=False)
 
 
 def main():
@@ -424,6 +386,7 @@ def main():
         )
         page = context.new_page()
 
+        # Süti inicializálás még az első alap megnyitása előtt
         try:
             page.goto(MAIN_URL, wait_until="domcontentloaded", timeout=30000)
             page.wait_for_timeout(1000)
@@ -440,9 +403,9 @@ def main():
                 timeout=90000
             )
 
+            # Megvárjuk az amCharts rajzolást
             page.wait_for_timeout(4000)
             dismiss_cookie_banner(page)
-            page.wait_for_timeout(500)
 
             # -----------------------------
             # Referenciaindex
@@ -463,7 +426,7 @@ def main():
             print("   Referenciaindex:", reference)
 
             # -----------------------------
-            # Portfólió összetétel diagram + jelmagyarázat
+            # Csak a kördiagram + jelmagyarázat mentése
             # -----------------------------
             output_file = IMAGE_DIR / f"{fund['id']}.png"
             screenshot_chart_block(page, output_file)
