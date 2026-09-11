@@ -26,6 +26,8 @@ concurrency:
 jobs:
   update-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
     steps:
       - name: Repository letöltése
         uses: actions/checkout@v4
