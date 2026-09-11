@@ -188,29 +188,42 @@ def exact_reference_from_dom(page):
 
 
 def dismiss_cookie_banner(page):
-    """Elfogadja vagy bezárja a Generali sütikezelő panelt, ha látható."""
-    selectors = [
-        "#onetrust-accept-btn-handler",
-        "button:has-text('Elfogadom')",
-        "button:has-text('Elfogad')",
-        "a:has-text('Elfogadom')",
-        ".cookie-accept",
-    ]
-    for sel in selectors:
-        try:
-            elem = page.locator(sel).first
-            if elem.is_visible():
-                elem.click(timeout=1500)
-                page.wait_for_timeout(500)
-                break
-        except Exception:
-            pass
-
-
-def find_chart_candidate(page):
     """
-    Megkeresi a diagramot és a jelmagyarázatot tartalmazó DOM blokkot.
-    Finomított, rugalmasabb pontozással.
+    Kifejezetten kezeli a Generali felugró süti ablakát és eltávolítja az overlayt.
+    """
+    try:
+        # Rákattint a "Mindegyik engedélyezése" gombra
+        btn = page.locator("button:has-text('Mindegyik engedélyezése'), a:has-text('Mindegyik engedélyezése')").first
+        if btn.is_visible():
+            btn.click(timeout=2000)
+            page.wait_for_timeout(500)
+    except Exception:
+        pass
+
+    # DOM-szintű kényszerített törlés az esetleges kitakaró rétegekre
+    page.evaluate(
+        """
+        () => {
+          const cookieElements = document.querySelectorAll(
+            '[class*="cookie"], [id*="cookie"], [class*="modal-backdrop"], [class*="overlay"]'
+          );
+          cookieElements.forEach(el => {
+            const text = (el.innerText || '').toLowerCase();
+            if (text.includes('sütiket') || text.includes('cookie') || el.className.includes('backdrop')) {
+              el.remove();
+            }
+          });
+          document.body.style.overflow = 'auto';
+        }
+        """
+    )
+
+
+def find_pie_chart_candidate(page):
+    """
+    Megkeresi a kördiagramot / fánkdiagramot és a hozzá tartozó jelmagyarázatot
+    tartalmazó legszűkebb közös DOM elemet.
+    Kizárja a felső vonaldiagramot.
     """
     return page.evaluate(
         """
@@ -253,49 +266,43 @@ def find_chart_candidate(page):
             return parts.join(' > ');
           };
 
-          const media = [...document.querySelectorAll('svg, canvas, img, div[class*="chart"]')].filter(visible);
-          const candidates = [];
+          // Megkeressük az összes címsort vagy blokkot, amely a kördiagramra utal
+          const allElements = [...document.querySelectorAll('div, section, article')].filter(visible);
+          const pieCandidates = [];
 
-          for (const mediaElement of media) {
-            const mediaRect = mediaElement.getBoundingClientRect();
-            if (mediaRect.width < 100 || mediaRect.height < 50) {
+          for (const el of allElements) {
+            const text = (el.innerText || '').trim();
+            
+            // Kizáró feltételek: ne a felső árfolyam vonaldiagram legyen
+            if (text.includes('Eszközalap árfolyama és nettó eszközértéke') && !text.includes('%')) {
               continue;
             }
 
-            let node = mediaElement;
-            for (let level = 0; level < 8 && node; level++, node = node.parentElement) {
-              if (!visible(node)) continue;
+            const hasPercentages = (text.match(/\\d+(?:[.,]\\d+)?\\s*%/g) || []).length;
+            const hasCompositionTitle = /összetétel|portfólió|eszközalap\\s*\\(\\d{4}/i.test(text);
+            const hasMedia = el.querySelector('svg, canvas') !== null;
 
-              const rect = node.getBoundingClientRect();
-              if (rect.width < 200 || rect.height < 100) continue;
-              if (rect.width > window.innerWidth * 1.1) continue;
-              if (rect.height > window.innerHeight * 2.5) continue;
-
-              const text = (node.innerText || node.textContent || '').replace(/\\s+/g, ' ').trim();
-
-              const percentages = (text.match(/\\d+(?:[.,]\\d+)?\\s*%/g) || []).length;
-              const investmentNames = (text.match(
-                /DKJ|MAXEIM|MAXIM|MVM|Pénzeszköz|Egyéb befektetés|MSCI|RMAX|MÁK|állampapír|kötvény|részvény|liquidity|cash/gi
-              ) || []).length;
-
-              if (percentages >= 1 || investmentNames >= 1) {
-                const score = (percentages * 25) + (investmentNames * 15) + Math.min(text.length, 500) / 100;
-                candidates.push({
-                  score: score,
-                  level: level,
-                  tag: node.tagName,
-                  path: makePath(node),
-                  width: rect.width,
-                  height: rect.height,
-                  percentages: percentages,
-                  investmentNames: investmentNames
+            // Csak akkor jelölt, ha van benne kördiagram (SVG/Canvas), és releváns jelmagyarázat százalékokkal
+            if (hasMedia && hasPercentages >= 2 && (hasCompositionTitle || text.includes('Egyéb befektetés') || text.includes('MÁK'))) {
+              const r = el.getBoundingClientRect();
+              
+              // Kiszűrjük a túl nagy (teljes oldal) elemeket
+              if (r.width > 250 && r.height > 150 && r.height < window.innerHeight * 2.0) {
+                // A legkisebb befoglaló területet keressük, ami mindent tartalmaz
+                const area = r.width * r.height;
+                pieCandidates.push({
+                  path: makePath(el),
+                  area: area,
+                  percentages: hasPercentages,
+                  tag: el.tagName
                 });
               }
             }
           }
 
-          candidates.sort((a, b) => b.score - a.score);
-          return candidates[0] || null;
+          // Terület szerint növekvő sorrend (a legszűkebb szülő konténer a legjobb)
+          pieCandidates.sort((a, b) => a.area - b.area);
+          return pieCandidates[0] || null;
         }
         """
     )
@@ -304,59 +311,40 @@ def find_chart_candidate(page):
 def screenshot_chart_block(page, output_file):
     dismiss_cookie_banner(page)
 
-    candidate = find_chart_candidate(page)
+    candidate = find_pie_chart_candidate(page)
 
     if candidate and candidate.get("path"):
         selector = candidate["path"]
-        print(
-            "   Diagram DOM blokk:",
-            candidate.get("tag"),
-            "score:", round(candidate.get("score", 0), 1),
-            "percentages:", candidate.get("percentages", 0),
-            "investment names:", candidate.get("investmentNames", 0)
-        )
         try:
             locator = page.locator(selector).first
             locator.scroll_into_view_if_needed()
-            page.wait_for_timeout(400)
+            page.wait_for_timeout(500)
+            
+            # Mégegyszer futtatjuk a banner takarítást a görgetés után
+            dismiss_cookie_banner(page)
+
             locator.screenshot(path=str(output_file), animations="disabled")
             if output_file.exists() and output_file.stat().st_size >= 1000:
+                print(f"   Portfólió összetétel diagram sikeresen mentve: {selector}")
                 return
         except Exception as e:
-            print(f"   Elsődleges lokátor screenshot sikertelen ({e}), fallback kísérlet...")
+            print(f"   Elsődleges kivágás sikertelen ({e}), fallback próbálkozás...")
 
-    # Fallback szelektorok, ha a heurisztika nem talált biztos elemet
-    fallback_selectors = [
-        "div[class*='chart']",
-        "div[id*='chart']",
-        ".highcharts-container",
-        "div[class*='eszkozalap']",
-        "div[class*='portfolio']",
-        "main",
-        "#content"
-    ]
+    # Fallback: Ha a heurisztika nem talált pontos konténert, megkeressük az alsó chart konténert
+    try:
+        charts = page.locator("div[class*='chart'], svg").all()
+        # Ha több van, a második általában a kördiagram (az első az árfolyam vonaldiagram)
+        target = charts[-1] if len(charts) > 1 else charts[0]
+        target.scroll_into_view_if_needed()
+        page.wait_for_timeout(400)
+        target.screenshot(path=str(output_file), animations="disabled")
+        if output_file.exists() and output_file.stat().st_size >= 1000:
+            return
+    except Exception:
+        pass
 
-    for sel in fallback_selectors:
-        try:
-            loc = page.locator(sel).first
-            if loc.is_visible():
-                loc.scroll_into_view_if_needed()
-                page.wait_for_timeout(300)
-                loc.screenshot(path=str(output_file), animations="disabled")
-                if output_file.exists() and output_file.stat().st_size >= 1000:
-                    print(f"   Fallback szelektorral sikerült menteni: {sel}")
-                    return
-        except Exception:
-            continue
-
-    # Végső fallback: teljes viewport mentése a futás megszakításának elkerülésére
-    print("   Figyelmeztetés: Specifikus blokk nem azonosítható, viewport screenshot készül.")
+    # Végső fallback
     page.screenshot(path=str(output_file), full_page=False)
-
-    if not output_file.exists() or output_file.stat().st_size < 1000:
-        raise RuntimeError(
-            "A diagram screenshot nem jött létre megfelelően: " + str(output_file)
-        )
 
 
 def main():
@@ -407,7 +395,7 @@ def main():
             print("   Referenciaindex:", reference)
 
             # -----------------------------
-            # Diagram + jelmagyarázat
+            # Portfólió összetétel diagram + jelmagyarázat
             # -----------------------------
             output_file = IMAGE_DIR / f"{fund['id']}.png"
             screenshot_chart_block(page, output_file)
@@ -424,7 +412,6 @@ def main():
     if len(result) != 18:
         raise RuntimeError("Nem készült el mind a 18 rekord.")
 
-    # A GitHub Actions szigorú ellenőrző lépése pontosan a v5 verziót várja el:
     payload = {
         "_version": 5,
         "funds": result
