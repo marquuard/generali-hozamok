@@ -287,10 +287,19 @@
       font-size: 13px;
     }
 
+    /* Görgetősáv teljes elrejtése */
     .chart-wrap {
       width: 100%;
-      overflow-x: auto;
+      overflow: hidden;
       margin-top: 10px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .chart-wrap::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
     }
 
     .portfolio-image {
