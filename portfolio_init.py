@@ -188,12 +188,12 @@ def exact_reference_from_dom(page):
 
 
 def dismiss_cookie_banner(page):
-    """Eltávolítja a sütis panelt és a hátteret."""
+    """Eltávolítja a sütis panelt és feloldja a blokkolást."""
     try:
         btn = page.locator("button:has-text('Mindegyik engedélyezése'), a:has-text('Mindegyik engedélyezése')").first
         if btn.is_visible():
             btn.click(timeout=1500)
-            page.wait_for_timeout(500)
+            page.wait_for_timeout(400)
     except Exception:
         pass
 
@@ -222,31 +222,52 @@ def dismiss_cookie_banner(page):
 
 def isolate_and_style_chart_container(page):
     """
-    1. Megkeresi a kördiagramot tartalmazó legszűkebb dobozt (Cím + Diagram + Jelmagyarázat).
-    2. Kizár minden felesleges külső szekciót (Hozamok gomb, Fogalommagyarázat).
-    3. Beállítja az átlátszó hátteret és a világos/sötét módban is olvasható kontrasztot.
+    Kikeresi a kördiagram konténerét, átlátszóvá teszi a hátteret,
+    és kontrasztos fehér stroke/árnyék réteget ad a szövegeknek.
     """
     return page.evaluate(
         """
         () => {
-          // 1. Kördiagram SVG megkeresése (textContent-et vizsgálunk, mert innerText nem lát az SVG-be)
-          const svgs = [...document.querySelectorAll('svg')];
-          let donutSvg = svgs.find(s => s.textContent && s.textContent.includes('%'));
-          
+          const visible = el => {
+            const r = el.getBoundingClientRect();
+            const s = getComputedStyle(el);
+            return (
+              r.width > 0 &&
+              r.height > 0 &&
+              s.display !== 'none' &&
+              s.visibility !== 'hidden'
+            );
+          };
+
+          // Megkeressük az összes SVG-t. A kördiagram általában az utolsó SVG az oldalon
+          const svgs = [...document.querySelectorAll('svg')].filter(visible);
+          let donutSvg = null;
+
+          // 1. Prioritás: van benne százalék vagy pie / donut jellemző
+          for (let i = svgs.length - 1; i >= 0; i--) {
+            const s = svgs[i];
+            const html = s.outerHTML.toLowerCase();
+            const txt = (s.textContent || '').toLowerCase();
+            if (txt.includes('%') || html.includes('pie') || html.includes('slice')) {
+              donutSvg = s;
+              break;
+            }
+          }
+
+          // 2. Ha 100%-os egyedi alap (mint a Pénzpiaci 2016), egyszerűen az alsó SVG kell
           if (!donutSvg && svgs.length > 0) {
             donutSvg = svgs[svgs.length - 1];
           }
 
           if (!donutSvg) return null;
 
-          // 2. Felfelé lépkedés a DOM-ban a legszűkebb közös szülő konténerhez
+          // Felfelé lépkedünk, amíg el nem érjük a szomszédos blokkok határát
           let curr = donutSvg.parentElement;
           let target = curr;
 
           while (curr && curr !== document.body && curr !== document.documentElement) {
             const text = curr.textContent || '';
-            
-            // Ha elérjük a szomszédos modulokat, MEG KELL ÁLLNI az előző szintnél!
+
             if (
               text.includes('FOGALOMMAGYARÁZAT') ||
               text.includes('HOZAMOK MEGJELENÍTÉSE') ||
@@ -262,7 +283,7 @@ def isolate_and_style_chart_container(page):
 
           if (!target) return null;
 
-          // 3. Hátterek törlése (transzparens PNG elérése)
+          // Átlátszóvá tesszük a szülőket
           document.documentElement.style.setProperty('background', 'transparent', 'important');
           document.body.style.setProperty('background', 'transparent', 'important');
 
@@ -275,10 +296,9 @@ def isolate_and_style_chart_container(page):
             p = p.parentElement;
           }
 
-          // A dobozon belül is eltávolítjuk a fehér háttereket, kivéve a kis színes négyzeteket
+          // Elemek hátterének törlése (kivéve a jelmagyarázat színes négyzetei)
           target.querySelectorAll('*').forEach(el => {
             const r = el.getBoundingClientRect();
-            // A jelmagyarázat színes négyzeteit nem bántjuk
             if (r.width > 0 && r.width <= 25 && r.height > 0 && r.height <= 25) {
               return;
             }
@@ -288,45 +308,46 @@ def isolate_and_style_chart_container(page):
             el.style.setProperty('box-shadow', 'none', 'important');
           });
 
-          // 4. Fehér kontúr / text-shadow a szövegeknek: sötét és világos témában is éles marad
+          // Kontúrok felhelyezése a sötét és világos olvashatósághoz
           const styleId = '__isolated_chart_style';
-          if (!document.getElementById(styleId)) {
-            const style = document.createElement('style');
+          let style = document.getElementById(styleId);
+          if (!style) {
+            style = document.createElement('style');
             style.id = styleId;
-            style.innerHTML = `
-              #__isolated_chart_box text,
-              #__isolated_chart_box tspan {
-                paint-order: stroke fill !important;
-                stroke: rgba(255, 255, 255, 0.95) !important;
-                stroke-width: 3.5px !important;
-                stroke-linecap: round !important;
-                stroke-linejoin: round !important;
-                font-weight: bold !important;
-              }
-              #__isolated_chart_box h1,
-              #__isolated_chart_box h2,
-              #__isolated_chart_box h3,
-              #__isolated_chart_box h4,
-              #__isolated_chart_box p,
-              #__isolated_chart_box span,
-              #__isolated_chart_box div,
-              #__isolated_chart_box b,
-              #__isolated_chart_box strong {
-                text-shadow:
-                  -1.5px -1.5px 0 #ffffff,
-                   1.5px -1.5px 0 #ffffff,
-                  -1.5px  1.5px 0 #ffffff,
-                   1.5px  1.5px 0 #ffffff,
-                   0px 0px 4px #ffffff,
-                   0px 0px 8px rgba(255, 255, 255, 0.9) !important;
-              }
-              #__isolated_chart_box polyline,
-              #__isolated_chart_box path.amcharts-pie-tick {
-                filter: drop-shadow(0px 0px 1px #ffffff) !important;
-              }
-            `;
             document.head.appendChild(style);
           }
+          style.innerHTML = `
+            #__isolated_chart_box text,
+            #__isolated_chart_box tspan {
+              paint-order: stroke fill !important;
+              stroke: rgba(255, 255, 255, 0.95) !important;
+              stroke-width: 3.5px !important;
+              stroke-linecap: round !important;
+              stroke-linejoin: round !important;
+              font-weight: bold !important;
+            }
+            #__isolated_chart_box h1,
+            #__isolated_chart_box h2,
+            #__isolated_chart_box h3,
+            #__isolated_chart_box h4,
+            #__isolated_chart_box p,
+            #__isolated_chart_box span,
+            #__isolated_chart_box div,
+            #__isolated_chart_box b,
+            #__isolated_chart_box strong {
+              text-shadow:
+                -1.5px -1.5px 0 #ffffff,
+                 1.5px -1.5px 0 #ffffff,
+                -1.5px  1.5px 0 #ffffff,
+                 1.5px  1.5px 0 #ffffff,
+                 0px 0px 4px #ffffff,
+                 0px 0px 8px rgba(255, 255, 255, 0.9) !important;
+            }
+            #__isolated_chart_box polyline,
+            #__isolated_chart_box path.amcharts-pie-tick {
+              filter: drop-shadow(0px 0px 1px #ffffff) !important;
+            }
+          `;
 
           target.id = '__isolated_chart_box';
           target.scrollIntoView({ block: 'center', inline: 'center' });
@@ -355,14 +376,16 @@ def screenshot_chart_block(page, output_file):
             )
 
             if output_file.exists() and output_file.stat().st_size >= 1000:
-                print(f"   Csak a tiszta diagram és jelmagyarázat mentve: {output_file.name}")
+                print(f"   Transzparens diagram mentve: {output_file.name}")
                 return
         except Exception as e:
-            print(f"   Szelektoros mentési hiba ({e}), tartalék vágás...")
+            print(f"   Hiba a specifikus blokk mentésekor ({e}), tartalék mentés...")
 
-    # Végső fallback kizárólag a diagram SVG-re
+    # Célzott fallback: az utolsó SVG (a kördiagram maga)
     try:
-        svg_elem = page.locator("svg:has-text('%')").last
+        svg_elem = page.locator("svg").last
+        svg_elem.scroll_into_view_if_needed()
+        page.wait_for_timeout(300)
         svg_elem.screenshot(path=str(output_file), omit_background=True)
     except Exception:
         page.screenshot(path=str(output_file), omit_background=True, full_page=False)
@@ -386,7 +409,7 @@ def main():
         )
         page = context.new_page()
 
-        # Süti inicializálás még az első alap megnyitása előtt
+        # Süti ablak előzetes feloldása
         try:
             page.goto(MAIN_URL, wait_until="domcontentloaded", timeout=30000)
             page.wait_for_timeout(1000)
@@ -403,9 +426,16 @@ def main():
                 timeout=90000
             )
 
-            # Megvárjuk az amCharts rajzolást
-            page.wait_for_timeout(4000)
+            # Első alapnál hosszabb türelmi idő a scriptmotor és SVG inicializálására
+            wait_ms = 6000 if number == 1 else 3500
+            page.wait_for_timeout(wait_ms)
             dismiss_cookie_banner(page)
+
+            # Explicit megvárjuk, hogy az alsó kördiagram SVG-je megjelenjen a DOM-ban
+            try:
+                page.locator("svg").last.wait_for(state="visible", timeout=10000)
+            except Exception:
+                pass
 
             # -----------------------------
             # Referenciaindex
@@ -426,7 +456,7 @@ def main():
             print("   Referenciaindex:", reference)
 
             # -----------------------------
-            # Csak a kördiagram + jelmagyarázat mentése
+            # Transzparens diagram + jelmagyarázat mentése
             # -----------------------------
             output_file = IMAGE_DIR / f"{fund['id']}.png"
             screenshot_chart_block(page, output_file)
@@ -452,7 +482,7 @@ def main():
         json.dumps(payload, ensure_ascii=False, indent=2),
         encoding="utf-8"
     )
-    print("Sikeres futás: portfolio.json és a diagramok elkészültek.")
+    print("Sikeres futás: portfolio.json és a transzparens diagramok elkészültek.")
 
 
 if __name__ == "__main__":
