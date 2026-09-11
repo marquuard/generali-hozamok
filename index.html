@@ -243,9 +243,9 @@
       font-weight: 700;
     }
 
-    .positive { color: var(--positive); }
-    .negative { color: var(--negative); }
-    .neutral { color: var(--muted); }
+    .positive { color: var(--positive) !important; }
+    .negative { color: var(--negative) !important; }
+    .neutral { color: var(--muted) !important; }
 
     .reference {
       margin: 24px auto 0;
@@ -513,6 +513,48 @@
       "innovacio"
     ];
 
+    // Hozam érték és előjel szigorú normalizálása (kezeli a speciális mínuszjeleket: −, –, —)
+    function parseReturn(val) {
+      if (val === null || val === undefined || val === "") return null;
+      if (typeof val === "number") return val;
+
+      const str = String(val)
+        .replace(/[−–—]/g, "-")
+        .replace(",", ".")
+        .replace("%", "")
+        .trim();
+
+      const num = parseFloat(str);
+      return isNaN(num) ? null : num;
+    }
+
+    function formatReturnValue(val) {
+      const num = parseReturn(val);
+      if (num === null) {
+        return { text: "Nincs adat", className: "neutral", val: -9999 };
+      }
+
+      if (num > 0) {
+        return {
+          text: `+${num.toFixed(2).replace(".", ",")}%`,
+          className: "positive",
+          val: num
+        };
+      } else if (num < 0) {
+        return {
+          text: `-${Math.abs(num).toFixed(2).replace(".", ",")}%`,
+          className: "negative",
+          val: num
+        };
+      } else {
+        return {
+          text: `0,00%`,
+          className: "neutral",
+          val: 0
+        };
+      }
+    }
+
     function normalize(text) {
       return String(text || "")
         .normalize("NFD")
@@ -546,7 +588,6 @@
 
     setThemeIcon();
 
-    // Kép kinagyítása / bezárása eseménykezelők
     portfolioImage.addEventListener("click", () => {
       if (portfolioImage.src && portfolioImage.style.display !== "none") {
         modalImg.src = portfolioImage.src;
@@ -564,7 +605,6 @@
       }
     });
 
-    // Saját portfólió harmonika
     myPortfolioBtn.addEventListener("click", () => {
       const isClosed = myPortfolioList.style.display === "" || myPortfolioList.style.display === "none";
       myPortfolioList.style.display = isClosed ? "block" : "none";
@@ -575,8 +615,8 @@
       const matched = fundList.filter((f) => MY_PORTFOLIO_IDS.includes(f.id));
 
       matched.sort((a, b) => {
-        const valA = a.ytd !== null && a.ytd !== undefined ? a.ytd : -9999;
-        const valB = b.ytd !== null && b.ytd !== undefined ? b.ytd : -9999;
+        const valA = formatReturnValue(a.ytd).val;
+        const valB = formatReturnValue(b.ytd).val;
         return valB - valA;
       });
 
@@ -586,18 +626,11 @@
         const item = document.createElement("div");
         item.className = "my-portfolio-item";
 
-        let ytdText = "Nincs adat";
-        let ytdClass = "neutral";
-
-        if (fund.ytd !== null && fund.ytd !== undefined) {
-          const sign = fund.ytd > 0 ? "+" : "";
-          ytdText = `${sign}${fund.ytd.toFixed(2).replace(".", ",")}%`;
-          ytdClass = fund.ytd > 0 ? "positive" : fund.ytd < 0 ? "negative" : "neutral";
-        }
+        const formatted = formatReturnValue(fund.ytd);
 
         item.innerHTML = `
           <span class="my-portfolio-name">${fund.name}</span>
-          <span class="my-portfolio-ytd ${ytdClass}">${ytdText}</span>
+          <span class="my-portfolio-ytd ${formatted.className}">${formatted.text}</span>
         `;
         myPortfolioList.appendChild(item);
       });
@@ -625,18 +658,9 @@
       fundName.textContent = fund.name;
       dateBadge.textContent = fund.date ? `Adat: ${fund.date}` : "";
 
-      if (fund.ytd === null || fund.ytd === undefined) {
-        returnValue.textContent = "Nincs adat";
-        returnValue.className = "neutral";
-      } else {
-        const sign = fund.ytd > 0 ? "+" : "";
-        returnValue.textContent = `${sign}${fund.ytd.toFixed(2).replace(".", ",")}%`;
-        returnValue.className = fund.ytd > 0
-          ? "positive"
-          : fund.ytd < 0
-            ? "negative"
-            : "neutral";
-      }
+      const formatted = formatReturnValue(fund.ytd);
+      returnValue.textContent = formatted.text;
+      returnValue.className = formatted.className;
 
       sourceLink.href = fund.url;
 
@@ -715,7 +739,6 @@
       showFund(selected);
     });
 
-    // GitHub Actions lefutás lekérése
     async function loadLastWorkflowRun() {
       const label = document.getElementById("workflow-last-run");
       if (!label) return;
