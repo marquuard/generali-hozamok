@@ -188,9 +188,7 @@ def exact_reference_from_dom(page):
 
 
 def dismiss_cookie_banner(page):
-    """
-    Kifejezetten kezeli a Generali felugró süti ablakát és fizikailag eltávolítja az overlayt.
-    """
+    """Kezeli a sütis panelt és eltávolítja a sötét hátteret."""
     try:
         btn = page.locator("button:has-text('Mindegyik engedélyezése'), a:has-text('Mindegyik engedélyezése')").first
         if btn.is_visible():
@@ -222,10 +220,52 @@ def dismiss_cookie_banner(page):
         pass
 
 
-def find_pie_chart_candidate(page):
+def prepare_transparent_contrast_styles(page):
     """
-    Megkeresi a kördiagramot / fánkdiagramot és a hozzá tartozó jelmagyarázatot.
-    Kizárja a felső vonaldiagramot.
+    1. Transzparensé teszi a hátteret.
+    2. Világos kontúrt ad a fekete szövegeknek, hogy mind night,
+       mind light módban élesen olvashatóak maradjanak.
+    """
+    page.evaluate(
+        """
+        () => {
+          // Háttér átlátszóvá tétele
+          document.documentElement.style.background = 'transparent';
+          document.body.style.background = 'transparent';
+          
+          const allElements = document.querySelectorAll('*');
+          allElements.forEach(el => {
+            const bg = window.getComputedStyle(el).backgroundColor;
+            if (bg === 'rgb(255, 255, 255)' || bg === 'white') {
+              el.style.backgroundColor = 'transparent';
+            }
+          });
+
+          // Kontrasztos feliratok: finom körvonal / árnyék,
+          // ami sötét háttéren kiemeli a betűket, fehér háttéren észrevétlen marad.
+          const style = document.createElement('style');
+          style.innerHTML = `
+            text, tspan, h1, h2, h3, h4, span, b, strong, div {
+              text-shadow: 
+                -1px -1px 2px rgba(255, 255, 255, 0.9),
+                 1px -1px 2px rgba(255, 255, 255, 0.9),
+                -1px  1px 2px rgba(255, 255, 255, 0.9),
+                 1px  1px 2px rgba(255, 255, 255, 0.9),
+                 0px  0px 3px rgba(255, 255, 255, 0.95) !important;
+            }
+            polyline, path[stroke="#ffffff"], path[stroke="white"] {
+              stroke: rgba(180, 180, 180, 0.8) !important;
+            }
+          `;
+          document.head.appendChild(style);
+        }
+        """
+    )
+
+
+def get_donut_chart_clip_rect(page):
+    """
+    Kiszámítja a kördiagram, cím és jelmagyarázat pontos határoló téglalapját.
     """
     return page.evaluate(
         """
@@ -242,65 +282,87 @@ def find_pie_chart_candidate(page):
             );
           };
 
-          const makePath = el => {
-            const parts = [];
-            while (el && el.nodeType === Node.ELEMENT_NODE) {
-              let part = el.tagName.toLowerCase();
-              if (el.id) {
-                part += '#' + CSS.escape(el.id);
-                parts.unshift(part);
-                break;
-              }
-              const parent = el.parentElement;
-              if (!parent) {
-                parts.unshift(part);
-                break;
-              }
-              const siblings = [...parent.children].filter(
-                child => child.tagName === el.tagName
-              );
-              if (siblings.length > 1) {
-                part += ':nth-of-type(' + (siblings.indexOf(el) + 1) + ')';
-              }
-              parts.unshift(part);
-              el = parent;
-            }
-            return parts.join(' > ');
-          };
+          const mediaElements = [...document.querySelectorAll('svg, canvas')].filter(visible);
+          let donutMedia = null;
 
-          const allElements = [...document.querySelectorAll('div, section, article')].filter(visible);
-          const pieCandidates = [];
-
-          for (const el of allElements) {
-            const text = (el.innerText || '').trim();
+          for (const media of mediaElements) {
+            const r = media.getBoundingClientRect();
+            if (r.width < 150 || r.height < 150) continue;
             
-            // Kizárás: Árfolyam és nettó eszközérték vonaldiagram blokkja
-            if (text.includes('Eszközalap árfolyama és nettó eszközértéke') && !text.includes('%')) {
-              continue;
+            const html = media.outerHTML.toLowerCase();
+            const parentText = (media.parentElement?.parentElement?.innerText || '').toLowerCase();
+            
+            if (html.includes('pie') || html.includes('slice') || parentText.includes('%') || parentText.includes('mák') || parentText.includes('összetétel')) {
+              donutMedia = media;
+              break;
             }
+          }
 
-            const hasPercentages = (text.match(/\\d+(?:[.,]\\d+)?\\s*%/g) || []).length;
-            const hasCompositionTitle = /összetétel|portfólió|eszközalap\\s*\\(\\d{4}/i.test(text);
-            const hasMedia = el.querySelector('svg, canvas') !== null;
+          if (!donutMedia && mediaElements.length > 0) {
+            donutMedia = mediaElements[mediaElements.length - 1];
+          }
 
-            // A kördiagram blokk tartalmaz SVG/canvas-t és százalékokat
-            if (hasMedia && hasPercentages >= 1 && (hasCompositionTitle || text.includes('Egyéb befektetés') || text.includes('MÁK') || text.includes('DKJ') || text.includes('Pénzeszköz'))) {
-              const r = el.getBoundingClientRect();
-              
-              if (r.width > 250 && r.height > 150 && r.height < window.innerHeight * 2.0) {
-                const area = r.width * r.height;
-                pieCandidates.push({
-                  path: makePath(el),
-                  area: area,
-                  percentages: hasPercentages,
-                  tag: el.tagName
-                });
+          if (!donutMedia) return null;
+
+          donutMedia.scrollIntoView({ block: 'center', inline: 'center' });
+          const mediaRect = donutMedia.getBoundingClientRect();
+
+          // Címsor megkeresése
+          let titleRect = null;
+          const headers = [...document.querySelectorAll('h1, h2, h3, h4, strong, b, div, span')].filter(visible);
+          for (const h of headers) {
+            const txt = (h.innerText || '').trim();
+            if (txt.match(/eszközalap\\s*\\(\\d{4}/i) || txt.includes('Portfólió összetétel')) {
+              const r = h.getBoundingClientRect();
+              if (r.bottom <= mediaRect.top + 60 && r.bottom >= mediaRect.top - 150) {
+                titleRect = r;
+                break;
               }
             }
           }
 
-          pieCandidates.sort((a, b) => a.area - b.area);
-          return pieCandidates[0] || null;
+          // Jelmagyarázat dobozának megkeresése
+          let legendRect = null;
+          const candidates = [...document.querySelectorAll('div, ul, table')].filter(visible);
+          for (const c of candidates) {
+            const txt = (c.innerText || '').trim();
+            const r = c.getBoundingClientRect();
+            if (r.top >= mediaRect.top && r.top <= mediaRect.bottom + 120) {
+              const matchCount = (txt.match(/MÁK|DKJ|MAX|Egyéb befektetés|Részvény|Kötvény/gi) || []).length;
+              if (matchCount >= 2 && r.height > 20) {
+                legendRect = r;
+                break;
+              }
+            }
+          }
+
+          const top = titleRect ? titleRect.top - 15 : mediaRect.top - 20;
+          const bottom = legendRect ? legendRect.bottom + 20 : mediaRect.bottom + 40;
+          
+          let left = Math.min(mediaRect.left, legendRect ? legendRect.left : mediaRect.left);
+          let right = Math.max(mediaRect.right, legendRect ? legendRect.right : mediaRect.right);
+
+          if (titleRect) {
+            left = Math.min(left, titleRect.left);
+            right = Math.max(right, titleRect.right);
+          }
+
+          left = Math.max(0, left - 25);
+          right = Math.min(window.innerWidth, right + 25);
+
+          const width = right - left;
+          const height = bottom - top;
+
+          if (width > 200 && height > 150) {
+            return {
+              x: left + window.scrollX,
+              y: top + window.scrollY,
+              width: width,
+              height: height
+            };
+          }
+
+          return null;
         }
         """
     )
@@ -308,40 +370,40 @@ def find_pie_chart_candidate(page):
 
 def screenshot_chart_block(page, output_file):
     dismiss_cookie_banner(page)
+    prepare_transparent_contrast_styles(page)
 
-    candidate = find_pie_chart_candidate(page)
+    clip_box = get_donut_chart_clip_rect(page)
 
-    if candidate and candidate.get("path"):
-        selector = candidate["path"]
+    if clip_box:
         try:
-            locator = page.locator(selector).first
-            locator.scroll_into_view_if_needed()
-            page.wait_for_timeout(500)
-            
-            # Tisztítás közvetlenül a screenshot előtt is
+            page.evaluate(f"window.scrollTo(0, {max(0, clip_box['y'] - 100)})")
+            page.wait_for_timeout(400)
             dismiss_cookie_banner(page)
+            prepare_transparent_contrast_styles(page)
 
-            locator.screenshot(path=str(output_file), animations="disabled")
+            fresh_clip = get_donut_chart_clip_rect(page)
+            target_clip = fresh_clip if fresh_clip else clip_box
+
+            page.screenshot(
+                path=str(output_file),
+                clip={
+                    "x": max(0, target_clip["x"]),
+                    "y": max(0, target_clip["y"]),
+                    "width": target_clip["width"],
+                    "height": target_clip["height"],
+                },
+                omit_background=True,
+                animations="disabled"
+            )
+
             if output_file.exists() and output_file.stat().st_size >= 1000:
-                print(f"   Portfólió összetétel diagram sikeresen mentve: {selector}")
+                print(f"   Transzparens diagram sikeresen mentve: {output_file.name}")
                 return
         except Exception as e:
-            print(f"   Elsődleges kivágás sikertelen ({e}), fallback próbálkozás...")
+            print(f"   Clip hiba ({e}), fallback mentés...")
 
-    # Fallback: Kifejezetten az utolsó diagram elem kivágása (amely a kördiagram)
-    try:
-        charts = page.locator("div[class*='chart'], svg").all()
-        target = charts[-1] if len(charts) > 1 else charts[0]
-        target.scroll_into_view_if_needed()
-        page.wait_for_timeout(400)
-        dismiss_cookie_banner(page)
-        target.screenshot(path=str(output_file), animations="disabled")
-        if output_file.exists() and output_file.stat().st_size >= 1000:
-            return
-    except Exception:
-        pass
-
-    page.screenshot(path=str(output_file), full_page=False)
+    # Fallback mentés átlátszó háttérrel
+    page.screenshot(path=str(output_file), omit_background=True, full_page=False)
 
 
 def main():
@@ -362,7 +424,6 @@ def main():
         )
         page = context.new_page()
 
-        # Süti állapot inicializálása az első alap megnyitása előtt
         try:
             page.goto(MAIN_URL, wait_until="domcontentloaded", timeout=30000)
             page.wait_for_timeout(1000)
@@ -379,7 +440,7 @@ def main():
                 timeout=90000
             )
 
-            page.wait_for_timeout(3500)
+            page.wait_for_timeout(4000)
             dismiss_cookie_banner(page)
             page.wait_for_timeout(500)
 
