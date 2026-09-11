@@ -27,6 +27,7 @@
       --positive: #16833b;
       --negative: #bd1e2d;
       --shadow: 0 10px 35px rgba(0,0,0,.08);
+      --item-bg: #f8f9fa;
     }
 
     html.dark {
@@ -40,6 +41,7 @@
       --positive: #49c978;
       --negative: #ff6878;
       --shadow: 0 10px 35px rgba(0,0,0,.35);
+      --item-bg: #24282c;
     }
 
     * { box-sizing: border-box; }
@@ -88,6 +90,75 @@
 
     .last-update strong {
       color: var(--text);
+    }
+
+    /* Saját portfólió gomb és lista stílus */
+    .my-portfolio-wrap {
+      margin-bottom: 22px;
+    }
+
+    .my-portfolio-btn {
+      width: 100%;
+      background: var(--input);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 13px 18px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 11px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: border-color .2s, background-color .2s;
+    }
+
+    .my-portfolio-btn:hover {
+      border-color: var(--accent);
+    }
+
+    .my-portfolio-btn svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      transition: transform .2s ease;
+    }
+
+    .my-portfolio-btn.open svg {
+      transform: rotate(180deg);
+    }
+
+    .my-portfolio-list {
+      display: none;
+      margin-top: 10px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--item-bg);
+      padding: 10px 14px;
+    }
+
+    .my-portfolio-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 9px 6px;
+      border-bottom: 1px solid var(--border);
+      font-size: 15px;
+    }
+
+    .my-portfolio-item:last-child {
+      border-bottom: none;
+    }
+
+    .my-portfolio-name {
+      font-weight: 500;
+    }
+
+    .my-portfolio-ytd {
+      font-weight: 700;
+      font-size: 16px;
     }
 
     .controls {
@@ -313,6 +384,15 @@
         Adatok utolsó frissítése: <strong id="workflow-last-run">Lekérés...</strong>
       </div>
 
+      <!-- Saját portfólió lenyíló modul -->
+      <div class="my-portfolio-wrap">
+        <button id="myPortfolioBtn" class="my-portfolio-btn" type="button">
+          <span>💼 Saját portfólióm</span>
+          <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div id="myPortfolioList" class="my-portfolio-list"></div>
+      </div>
+
       <div class="controls">
         <div>
           <div class="search-wrap">
@@ -371,9 +451,20 @@
     const sourceLink = document.getElementById("sourceLink");
     const themeToggle = document.getElementById("themeToggle");
 
+    const myPortfolioBtn = document.getElementById("myPortfolioBtn");
+    const myPortfolioList = document.getElementById("myPortfolioList");
+
     let funds = [];
     let portfolio = {};
     let filteredFunds = [];
+
+    // A saját portfólióhoz tartozó eszközalapok azonosítói
+    const MY_PORTFOLIO_IDS = [
+      "horizont-10",
+      "hazai-reszveny",
+      "tallozo",
+      "innovacio"
+    ];
 
     function normalize(text) {
       return String(text || "")
@@ -407,6 +498,46 @@
     });
 
     setThemeIcon();
+
+    // Saját portfólió harmonika nyitás/csukás
+    myPortfolioBtn.addEventListener("click", () => {
+      const isClosed = myPortfolioList.style.display === "" || myPortfolioList.style.display === "none";
+      myPortfolioList.style.display = isClosed ? "block" : "none";
+      myPortfolioBtn.classList.toggle("open", isClosed);
+    });
+
+    function renderMyPortfolio(fundList) {
+      const matched = fundList.filter((f) => MY_PORTFOLIO_IDS.includes(f.id));
+
+      // Csökkenő sorrendbe rendezés az YTD hozam alapján
+      matched.sort((a, b) => {
+        const valA = a.ytd !== null && a.ytd !== undefined ? a.ytd : -9999;
+        const valB = b.ytd !== null && b.ytd !== undefined ? b.ytd : -9999;
+        return valB - valA;
+      });
+
+      myPortfolioList.innerHTML = "";
+
+      matched.forEach((fund) => {
+        const item = document.createElement("div");
+        item.className = "my-portfolio-item";
+
+        let ytdText = "Nincs adat";
+        let ytdClass = "neutral";
+
+        if (fund.ytd !== null && fund.ytd !== undefined) {
+          const sign = fund.ytd > 0 ? "+" : "";
+          ytdText = `${sign}${fund.ytd.toFixed(2).replace(".", ",")}%`;
+          ytdClass = fund.ytd > 0 ? "positive" : fund.ytd < 0 ? "negative" : "neutral";
+        }
+
+        item.innerHTML = `
+          <span class="my-portfolio-name">${fund.name}</span>
+          <span class="my-portfolio-ytd ${ytdClass}">${ytdText}</span>
+        `;
+        myPortfolioList.appendChild(item);
+      });
+    }
 
     function populateSelect(list) {
       const current = fundSelect.value;
@@ -526,12 +657,10 @@
       if (!label) return;
 
       try {
-        // Automatikus repófeloldás a GitHub Pages URL-ből vagy közvetlen megadásból
         const pathSegments = window.location.pathname.split("/").filter(Boolean);
         let owner = window.location.hostname.split(".")[0];
         let repo = pathSegments[0] || "generali-hozamok";
 
-        // Lokális futtatás (localhost) esetén fallback adatok
         if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
           repo = "generali-hozamok";
         }
@@ -580,6 +709,9 @@
         populateSelect(funds);
         resultCount.textContent = `${funds.length} eszközalap`;
         showFund(funds[0]);
+
+        // Saját portfólió kártyák legenerálása az adatokból
+        renderMyPortfolio(funds);
       })
       .catch((error) => {
         console.error(error);
