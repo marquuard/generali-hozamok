@@ -73,10 +73,21 @@
     }
 
     .subtitle {
-      margin: 0 0 24px;
+      margin: 0 0 6px;
       text-align: center;
       color: var(--muted);
       font-size: 14px;
+    }
+
+    .last-update {
+      margin: 0 0 24px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .last-update strong {
+      color: var(--text);
     }
 
     .controls {
@@ -218,7 +229,7 @@
       height: auto;
       margin: 0 auto;
       border-radius: 8px;
-      background: #fff;
+      background: transparent;
     }
 
     .portfolio-empty {
@@ -298,6 +309,9 @@
     <section class="card">
       <h1>Generali eszközalapok</h1>
       <p class="subtitle">Forint alapú eszközalapok II. · év elejétől számított hozam</p>
+      <div class="last-update">
+        Adatok utolsó frissítése: <strong id="workflow-last-run">Lekérés...</strong>
+      </div>
 
       <div class="controls">
         <div>
@@ -505,6 +519,50 @@
       const selected = funds.find((fund) => fund.id === fundSelect.value);
       showFund(selected);
     });
+
+    // GitHub Actions lefutás lekérése
+    async function loadLastWorkflowRun() {
+      const label = document.getElementById("workflow-last-run");
+      if (!label) return;
+
+      try {
+        // Automatikus repófeloldás a GitHub Pages URL-ből vagy közvetlen megadásból
+        const pathSegments = window.location.pathname.split("/").filter(Boolean);
+        let owner = window.location.hostname.split(".")[0];
+        let repo = pathSegments[0] || "generali-hozamok";
+
+        // Lokális futtatás (localhost) esetén fallback adatok
+        if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+          repo = "generali-hozamok";
+        }
+
+        const res = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}/actions/runs?status=success&per_page=1`
+        );
+
+        if (!res.ok) throw new Error("API hiba");
+
+        const data = await res.json();
+
+        if (data.workflow_runs && data.workflow_runs.length > 0) {
+          const runDate = new Date(data.workflow_runs[0].updated_at);
+          label.textContent = runDate.toLocaleString("hu-HU", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: "Europe/Budapest"
+          });
+        } else {
+          label.textContent = "Nem elérhető";
+        }
+      } catch (_) {
+        label.textContent = "Ismeretlen";
+      }
+    }
+
+    loadLastWorkflowRun();
 
     Promise.all([
       fetch("funds.json", { cache: "no-store" }).then((r) => r.json()),
