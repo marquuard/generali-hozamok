@@ -189,40 +189,42 @@ def exact_reference_from_dom(page):
 
 def dismiss_cookie_banner(page):
     """
-    Kifejezetten kezeli a Generali felugró süti ablakát és eltávolítja az overlayt.
+    Kifejezetten kezeli a Generali felugró süti ablakát és fizikailag eltávolítja az overlayt.
     """
     try:
-        # Rákattint a "Mindegyik engedélyezése" gombra
         btn = page.locator("button:has-text('Mindegyik engedélyezése'), a:has-text('Mindegyik engedélyezése')").first
         if btn.is_visible():
-            btn.click(timeout=2000)
-            page.wait_for_timeout(500)
+            btn.click(timeout=1500)
+            page.wait_for_timeout(600)
     except Exception:
         pass
 
-    # DOM-szintű kényszerített törlés az esetleges kitakaró rétegekre
-    page.evaluate(
-        """
-        () => {
-          const cookieElements = document.querySelectorAll(
-            '[class*="cookie"], [id*="cookie"], [class*="modal-backdrop"], [class*="overlay"]'
-          );
-          cookieElements.forEach(el => {
-            const text = (el.innerText || '').toLowerCase();
-            if (text.includes('sütiket') || text.includes('cookie') || el.className.includes('backdrop')) {
-              el.remove();
+    try:
+        page.evaluate(
+            """
+            () => {
+              const selectors = [
+                '#onetrust-banner-sdk',
+                '.onetrust-pc-dark-filter',
+                '[class*="cookie"]',
+                '[id*="cookie"]',
+                '.modal-backdrop',
+                '.fade.show'
+              ];
+              selectors.forEach(sel => {
+                document.querySelectorAll(sel).forEach(el => el.remove());
+              });
+              document.body.style.overflow = 'auto';
             }
-          });
-          document.body.style.overflow = 'auto';
-        }
-        """
-    )
+            """
+        )
+    except Exception:
+        pass
 
 
 def find_pie_chart_candidate(page):
     """
-    Megkeresi a kördiagramot / fánkdiagramot és a hozzá tartozó jelmagyarázatot
-    tartalmazó legszűkebb közös DOM elemet.
+    Megkeresi a kördiagramot / fánkdiagramot és a hozzá tartozó jelmagyarázatot.
     Kizárja a felső vonaldiagramot.
     """
     return page.evaluate(
@@ -266,14 +268,13 @@ def find_pie_chart_candidate(page):
             return parts.join(' > ');
           };
 
-          // Megkeressük az összes címsort vagy blokkot, amely a kördiagramra utal
           const allElements = [...document.querySelectorAll('div, section, article')].filter(visible);
           const pieCandidates = [];
 
           for (const el of allElements) {
             const text = (el.innerText || '').trim();
             
-            // Kizáró feltételek: ne a felső árfolyam vonaldiagram legyen
+            // Kizárás: Árfolyam és nettó eszközérték vonaldiagram blokkja
             if (text.includes('Eszközalap árfolyama és nettó eszközértéke') && !text.includes('%')) {
               continue;
             }
@@ -282,13 +283,11 @@ def find_pie_chart_candidate(page):
             const hasCompositionTitle = /összetétel|portfólió|eszközalap\\s*\\(\\d{4}/i.test(text);
             const hasMedia = el.querySelector('svg, canvas') !== null;
 
-            // Csak akkor jelölt, ha van benne kördiagram (SVG/Canvas), és releváns jelmagyarázat százalékokkal
-            if (hasMedia && hasPercentages >= 2 && (hasCompositionTitle || text.includes('Egyéb befektetés') || text.includes('MÁK'))) {
+            // A kördiagram blokk tartalmaz SVG/canvas-t és százalékokat
+            if (hasMedia && hasPercentages >= 1 && (hasCompositionTitle || text.includes('Egyéb befektetés') || text.includes('MÁK') || text.includes('DKJ') || text.includes('Pénzeszköz'))) {
               const r = el.getBoundingClientRect();
               
-              // Kiszűrjük a túl nagy (teljes oldal) elemeket
               if (r.width > 250 && r.height > 150 && r.height < window.innerHeight * 2.0) {
-                // A legkisebb befoglaló területet keressük, ami mindent tartalmaz
                 const area = r.width * r.height;
                 pieCandidates.push({
                   path: makePath(el),
@@ -300,7 +299,6 @@ def find_pie_chart_candidate(page):
             }
           }
 
-          // Terület szerint növekvő sorrend (a legszűkebb szülő konténer a legjobb)
           pieCandidates.sort((a, b) => a.area - b.area);
           return pieCandidates[0] || null;
         }
@@ -320,7 +318,7 @@ def screenshot_chart_block(page, output_file):
             locator.scroll_into_view_if_needed()
             page.wait_for_timeout(500)
             
-            # Mégegyszer futtatjuk a banner takarítást a görgetés után
+            # Tisztítás közvetlenül a screenshot előtt is
             dismiss_cookie_banner(page)
 
             locator.screenshot(path=str(output_file), animations="disabled")
@@ -330,20 +328,19 @@ def screenshot_chart_block(page, output_file):
         except Exception as e:
             print(f"   Elsődleges kivágás sikertelen ({e}), fallback próbálkozás...")
 
-    # Fallback: Ha a heurisztika nem talált pontos konténert, megkeressük az alsó chart konténert
+    # Fallback: Kifejezetten az utolsó diagram elem kivágása (amely a kördiagram)
     try:
         charts = page.locator("div[class*='chart'], svg").all()
-        # Ha több van, a második általában a kördiagram (az első az árfolyam vonaldiagram)
         target = charts[-1] if len(charts) > 1 else charts[0]
         target.scroll_into_view_if_needed()
         page.wait_for_timeout(400)
+        dismiss_cookie_banner(page)
         target.screenshot(path=str(output_file), animations="disabled")
         if output_file.exists() and output_file.stat().st_size >= 1000:
             return
     except Exception:
         pass
 
-    # Végső fallback
     page.screenshot(path=str(output_file), full_page=False)
 
 
@@ -359,10 +356,19 @@ def main():
             args=["--no-sandbox", "--disable-setuid-sandbox"]
         )
 
-        page = browser.new_page(
+        context = browser.new_context(
             viewport={"width": 1440, "height": 1200},
             device_scale_factor=1
         )
+        page = context.new_page()
+
+        # Süti állapot inicializálása az első alap megnyitása előtt
+        try:
+            page.goto(MAIN_URL, wait_until="domcontentloaded", timeout=30000)
+            page.wait_for_timeout(1000)
+            dismiss_cookie_banner(page)
+        except Exception:
+            pass
 
         for number, fund in enumerate(funds, 1):
             print(f"[{number}/18] {fund['name']}")
@@ -373,8 +379,9 @@ def main():
                 timeout=90000
             )
 
-            # Megvárjuk az aszinkron betöltést és animációkat
-            page.wait_for_timeout(4000)
+            page.wait_for_timeout(3500)
+            dismiss_cookie_banner(page)
+            page.wait_for_timeout(500)
 
             # -----------------------------
             # Referenciaindex
