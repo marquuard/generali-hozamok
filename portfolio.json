@@ -1,0 +1,113 @@
+{
+  "_version": 5,
+  "funds": {
+    "penzpiaci-2016": {
+      "name": "Pénzpiaci 2016 eszközalap",
+      "reference_index": "100%-ban RMAX Index",
+      "portfolio_image": "portfolio_images/penzpiaci-2016.png",
+      "source_url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/penzpiaci2016eszkozalap.aspx"
+    },
+    "hazai-kotveny": {
+      "name": "Hazai kötvény eszközalap",
+      "reference_index": "100%-ban MAX Composite Index",
+      "portfolio_image": "portfolio_images/hazai-kotveny.png",
+      "source_url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/hazaikotvenyeszkozalap.aspx"
+    },
+    "tallozo": {
+      "name": "Tallózó abszolút hozam eszközalap",
+      "reference_index": "100%-ban RMAX Index",
+      "portfolio_image": "portfolio_images/tallozo.png",
+      "source_url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/tallozoabszoluthozameszkozalap.aspx"
+    },
+    "vilagjaro-kotveny": {
+      "name": "Világjáró kötvény eszközalap",
+      "reference_index": "20%-ban FTSE MTS Eurozone Government Bond 3-5Y 20%-ban JPM Government Bond Index Emerging Markets Global Core, 20%-ban Markit iBoxx EUR Liquid High Yield Index, 20%-ban iBoxx USD Liquid High Yield Index, 20%-ban RMAX Index",
+      "portfolio_image": "portfolio_images/vilagjaro-kotveny.png",
+      "source_url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/vilagjarokotvenyeszkozalap.aspx"
+    },
+    "horizont-15": {
+      "name": "Horizont 15+ vegyes eszközalap",
+      "reference_index": "40%-ban MAX Composite Index, 40%-ban MSCI World Index, 20%-ban MSCI Daily Total Return Net Emerging Markets Index",
+      "portfolio_image": "portfolio_images/horizont-15.png",
+      "source_url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/horizont15eszkozalap.aspx"
+    },
+    "horizont-10": {
+      "name": "Horizont 10+ vegyes eszközalap",
+      "reference_index": "60%-ban MAX Composite Index, 25%-ban MSCI World Index 15%-ban MSCI Daily Total Return Net Emerging Markets Index",
+      "portfolio_image": "portfolio_images/horizont-10.png",
+      "source_url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/horizont10eszkozalap.aspx"
+    },
+    "horizont-5": {
+      "name": "Horizont 5+ vegyes eszközalap",
+      "reference_index": "80%-ban MAX Composite Index, 15%-ban MSCI World Index, 5%-ban MSCI Daily Total Return, Net Emerging Markets Index",
+      "portfolio_image": "portfolio_images/horizont-5.png",
+      "source_url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/horizont5eszkozalap.aspx"
+    },
+    "hazai-reszveny": {
+      "name": "Hazai részvény eszközalap",
+      "reference_index": "80%-ban BUX index, 20%-ban RMAX Index",
+      "portfolio_image": "portfolio_images/hazai-reszveny.png",
+      "source_url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/hazaireszvenyeszkozalap.aspx"
+    },
+    "fejlodo-vilag": {
+      "name": "Fejlődő világ részvény eszközalap",
+      "reference_index": "80%-ban MSCI Daily Total Return Net Emerging Markets Index, 20%-ban RMAX Index",
+      "portfolio_image": "portfolio_images/fejlodo-vilag.png",
+      "source_url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/fejlodovilagreszvenyeszkozalap.aspx"
+    },
+    "fejlett-vilag": {
+      "name": "Fejlett világ részvény eszközalap",
+      "reference_index": "80%-ban MSCI World Index, 20%-ban RMAX Index",
+      "portfolio_image": "portfolio_images/fejlett-vilag.png",
+      "source_url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/fejlettvilagreszvenyeszkozalap.aspx"
+    },
+    "vilagmarkak": {
+      "name": "Világmárkák részvény eszközalap",
+      "reference_index": "40%-ban MSCI Daily TR World Consumer Staples Index, 40%-ban MSCI Daily TR World Net Consumer Discretionary Index, 20%-ban RMAX Index",
+      "portfolio_image": "portfolio_images/vilagmarkak.png",
+      "source_url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/vilagmarkakreszvenyeszkozalap.aspx"
+    },
+    "innovacio": {
+      "name": "Innováció részvény eszközalap",
+      "reference_index": "80%-ban MSCI World Information Technology Index, 20%-ban RMAX Index",
+      "portfolio_image": "portfolio_images/innovacio.png",
+      "source_url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/innovacioreszvenyeszkozalap.aspx"
+    },
+    "fenntarthato": {
+      "name": "Fenntartható Világ részvény eszközalap",
+      "reference_index": "80% MSCI ACWI Sustainable Impact Index USD Net Total Return, 20% RMAX Index",
+      "portfolio_image": "portfolio_images/fenntarthato.png",
+      "source_url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/fenntarthatovilagreszvenyeszkozalap.aspx"
+    },
+    "tudatos-fejlett": {
+      "name": "Tudatos fejlett piac részvény eszközalap",
+      "reference_index": "90% MSCI World Index, 10% RMAX Index",
+      "portfolio_image": "portfolio_images/tudatos-fejlett.png",
+      "source_url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/tudatosfejlettpiacreszvenyeszkozalap.aspx"
+    },
+    "tavlat-fejlodo": {
+      "name": "TávLat fejlődő piac részvény eszközalap",
+      "reference_index": "90% MSCI EM Emerging Markets IMI USD NET Index, 10% RMAX Index",
+      "portfolio_image": "portfolio_images/tavlat-fejlodo.png",
+      "source_url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/tavlatfejlodopiacreszvenyeszkozalap.aspx"
+    },
+    "kotveny-2027m": {
+      "name": "Kötvény 2027/M árfolyamvédett eszközalap",
+      "reference_index": "ZMAX Index",
+      "portfolio_image": "portfolio_images/kotveny-2027m.png",
+      "source_url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/kotveny2027meszkozalap.aspx"
+    },
+    "magyar-piac": {
+      "name": "Magyar piac részvény eszközalap",
+      "reference_index": "90% BUX Index, 10% RMAX Index",
+      "portfolio_image": "portfolio_images/magyar-piac.png",
+      "source_url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/magyarpiacreszvenyeszkozalap.aspx"
+    },
+    "nemzetkozi-markak": {
+      "name": "Nemzetközi márkák részvény eszközalap",
+      "reference_index": "45%-ban MSCI Daily TR World Consumer Staples Index, 45%-ban MSCI Daily TR World Net Consumer Discretionary Index, 10%-ban RMAX Index",
+      "portfolio_image": "portfolio_images/nemzetkozi-markak.png",
+      "source_url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/nemzetkozimarkakpiacreszvenyeszkozalap.aspx"
+    }
+  }
+}
