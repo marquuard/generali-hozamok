@@ -278,7 +278,6 @@ def find_chart_candidate(page):
                 /DKJ|MAXEIM|MAXIM|MVM|Pénzeszköz|Egyéb befektetés|MSCI|RMAX|MÁK|állampapír|kötvény|részvény|liquidity|cash/gi
               ) || []).length;
 
-              // Rugalmasabb feltételek: elegendő 1 százalék vagy 1 kulcsszó is a jelöltséghez
               if (percentages >= 1 || investmentNames >= 1) {
                 const score = (percentages * 25) + (investmentNames * 15) + Math.min(text.length, 500) / 100;
                 candidates.push({
@@ -425,8 +424,9 @@ def main():
     if len(result) != 18:
         raise RuntimeError("Nem készült el mind a 18 rekord.")
 
+    # A GitHub Actions szigorú ellenőrző lépése pontosan a v5 verziót várja el:
     payload = {
-        "_version": 6,
+        "_version": 5,
         "funds": result
     }
 
