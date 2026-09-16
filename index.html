@@ -29,6 +29,10 @@
       --shadow: 0 10px 35px rgba(0,0,0,.08);
       --item-bg: #f8f9fa;
       --table-hover: #f1f3f5;
+      
+      /* Hőtérképes sávszínek (világos mód) */
+      --bar-pos: rgba(22, 131, 59, 0.18);
+      --bar-neg: rgba(189, 30, 45, 0.18);
     }
 
     html.dark {
@@ -44,6 +48,10 @@
       --shadow: 0 10px 35px rgba(0,0,0,.35);
       --item-bg: #24282c;
       --table-hover: #292e33;
+
+      /* Hőtérképes sávszínek (sötét mód) */
+      --bar-pos: rgba(73, 201, 120, 0.22);
+      --bar-neg: rgba(255, 104, 120, 0.22);
     }
 
     * { box-sizing: border-box; }
@@ -405,6 +413,17 @@
       padding-left: 20px;
     }
 
+    /* Az YTD oszlop fejléce pontosan az Eszközalap neve fejléc stílusát kapja */
+    th#thYtd,
+    th#thYtd.active-sort {
+      color: var(--muted) !important;
+    }
+
+    th#thYtd:hover,
+    th#thYtd.active-sort:hover {
+      color: var(--text) !important;
+    }
+
     .sort-indicator {
       display: inline-block;
       margin-left: 4px;
@@ -412,7 +431,6 @@
       opacity: 0.6;
     }
 
-    /* Rendezéskor sem kap piros színt semelyik fejléc, megmarad a muted/text stílus */
     th.active-sort {
       color: var(--muted) !important;
     }
@@ -429,6 +447,7 @@
       padding: 8px 14px;
       border-bottom: 1px solid var(--border);
       color: var(--text);
+      position: relative;
     }
 
     tbody tr {
@@ -448,7 +467,39 @@
       font-weight: 500;
     }
 
-    .td-ytd {
+    /* Hozamsáv és hőtérkép konténer a cellán belül */
+    .ytd-cell-box {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      min-width: 110px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .ytd-bar {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      right: 0;
+      border-radius: 4px;
+      transition: width .3s ease;
+      z-index: 1;
+    }
+
+    .ytd-bar.positive-bar {
+      background: var(--bar-pos);
+    }
+
+    .ytd-bar.negative-bar {
+      background: var(--bar-neg);
+    }
+
+    .ytd-text {
+      position: relative;
+      z-index: 2;
       font-weight: 700;
       font-size: 14.5px;
     }
@@ -775,6 +826,16 @@
     }
 
     function renderTable() {
+      // Megkeressük a maximális abszolút hozamot a relatív sávszélességek kiszámításához
+      let maxAbsValue = 0;
+      funds.forEach(f => {
+        const parsed = parseReturn(f.ytd);
+        if (parsed !== null && Math.abs(parsed) > maxAbsValue) {
+          maxAbsValue = Math.abs(parsed);
+        }
+      });
+      if (maxAbsValue === 0) maxAbsValue = 1;
+
       const sorted = [...funds].sort((a, b) => {
         if (currentSortColumn === "name") {
           return currentSortAsc
@@ -810,10 +871,24 @@
       sorted.forEach(fund => {
         const tr = document.createElement("tr");
         const formatted = formatReturnValue(fund.ytd);
+        const numVal = formatted.val;
+
+        let barHtml = "";
+        if (numVal !== -9999 && numVal !== 0) {
+          // Arányos szélesség (max 95%-ig kitöltve a cellát)
+          const barWidthPercent = Math.min(Math.round((Math.abs(numVal) / maxAbsValue) * 95), 95);
+          const barTypeClass = numVal > 0 ? "positive-bar" : "negative-bar";
+          barHtml = `<div class="ytd-bar ${barTypeClass}" style="width: ${barWidthPercent}%;"></div>`;
+        }
 
         tr.innerHTML = `
           <td class="td-name">${fund.name}</td>
-          <td class="col-ytd td-ytd ${formatted.className}">${formatted.text}</td>
+          <td class="col-ytd td-ytd">
+            <div class="ytd-cell-box">
+              ${barHtml}
+              <span class="ytd-text ${formatted.className}">${formatted.text}</span>
+            </div>
+          </td>
         `;
 
         tr.addEventListener("click", () => {
