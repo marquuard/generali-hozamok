@@ -336,7 +336,6 @@
       color: var(--accent);
     }
 
-    /* Rendezhető táblázat modul stílus */
     .table-section {
       margin-top: 35px;
       border-top: 1px solid var(--border);
@@ -574,11 +573,10 @@
           </div>
         </div>
 
-        <!-- Összes eszközalap rendezhető táblázat -->
         <div class="table-section">
           <div class="table-header-row">
             <h2>Összes eszközalap hozama</h2>
-            <span class="table-hint">Kattints a fejlécekre a rendezéshez</span>
+            <span class="table-hint">Kattints a fejlécre a rendezéshez</span>
           </div>
 
           <div class="table-wrap">
@@ -586,7 +584,6 @@
               <thead>
                 <tr>
                   <th id="thName" onclick="handleTableSort('name')">Eszközalap neve <span class="sort-indicator">▲▼</span></th>
-                  <th id="thDate" onclick="handleTableSort('date')">Dátum <span class="sort-indicator">▲▼</span></th>
                   <th id="thYtd" class="text-right" onclick="handleTableSort('ytd')">YTD hozam <span class="sort-indicator">▲▼</span></th>
                 </tr>
               </thead>
@@ -632,9 +629,8 @@
     let portfolio = {};
     let filteredFunds = [];
 
-    // Táblázat rendezési állapota
     let currentSortColumn = "ytd";
-    let currentSortAsc = false; // Alapból YTD szerint csökkenő
+    let currentSortAsc = false;
 
     const MY_PORTFOLIO_IDS = [
       "horizont-10",
@@ -765,17 +761,12 @@
       });
     }
 
-    // Táblázat renderelése és fejléc frissítése
     function renderTable() {
       const sorted = [...funds].sort((a, b) => {
         if (currentSortColumn === "name") {
           return currentSortAsc
             ? a.name.localeCompare(b.name, "hu")
             : b.name.localeCompare(a.name, "hu");
-        } else if (currentSortColumn === "date") {
-          const dA = a.date || "";
-          const dB = b.date || "";
-          return currentSortAsc ? dA.localeCompare(dB) : dB.localeCompare(dA);
         } else if (currentSortColumn === "ytd") {
           const vA = formatReturnValue(a.ytd).val;
           const vB = formatReturnValue(b.ytd).val;
@@ -784,10 +775,8 @@
         return 0;
       });
 
-      // Fejléc jelzéseinek frissítése
       const headers = [
         { id: "thName", col: "name", label: "Eszközalap neve" },
-        { id: "thDate", col: "date", label: "Dátum" },
         { id: "thYtd", col: "ytd", label: "YTD hozam" }
       ];
 
@@ -810,11 +799,9 @@
 
         tr.innerHTML = `
           <td class="td-name">${fund.name}</td>
-          <td style="color: var(--muted);">${fund.date || "–"}</td>
           <td class="text-right td-ytd ${formatted.className}">${formatted.text}</td>
         `;
 
-        // Sorra kattintva kiválasztjuk a felső nézetben és felgörgetünk
         tr.addEventListener("click", () => {
           fundSelect.value = fund.id;
           showFund(fund);
@@ -1020,7 +1007,7 @@
 
         resetView();
         renderMyPortfolio(funds);
-        renderTable(); // Táblázat inicializálása
+        renderTable();
       })
       .catch((error) => {
         console.error(error);
