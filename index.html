@@ -28,6 +28,7 @@
       --negative: #bd1e2d;
       --shadow: 0 10px 35px rgba(0,0,0,.08);
       --item-bg: #f8f9fa;
+      --table-hover: #f1f3f5;
     }
 
     html.dark {
@@ -42,6 +43,7 @@
       --negative: #ff6878;
       --shadow: 0 10px 35px rgba(0,0,0,.35);
       --item-bg: #24282c;
+      --table-hover: #292e33;
     }
 
     * { box-sizing: border-box; }
@@ -334,6 +336,111 @@
       color: var(--accent);
     }
 
+    /* Rendezhető táblázat modul stílus */
+    .table-section {
+      margin-top: 35px;
+      border-top: 1px solid var(--border);
+      padding-top: 25px;
+    }
+
+    .table-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .table-header-row h2 {
+      margin: 0;
+      font-size: 19px;
+    }
+
+    .table-hint {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--input);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      background: var(--item-bg);
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      user-select: none;
+      transition: color .2s, background-color .2s;
+    }
+
+    th:hover {
+      color: var(--text);
+      background-color: var(--table-hover);
+    }
+
+    th.text-right, td.text-right {
+      text-align: right;
+    }
+
+    .sort-indicator {
+      display: inline-block;
+      margin-left: 4px;
+      font-size: 11px;
+      opacity: 0.6;
+    }
+
+    th.active-sort {
+      color: var(--accent);
+    }
+
+    th.active-sort .sort-indicator {
+      opacity: 1;
+    }
+
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    tbody tr {
+      cursor: pointer;
+      transition: background-color .15s ease;
+    }
+
+    tbody tr:hover {
+      background-color: var(--table-hover);
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .td-name {
+      font-weight: 500;
+    }
+
+    .td-ytd {
+      font-weight: 700;
+      font-size: 15px;
+    }
+
     .error {
       color: var(--negative);
       padding: 20px;
@@ -466,6 +573,28 @@
             <a id="sourceLink" href="#" target="_blank" rel="noopener noreferrer">Generali eszközalap-oldal</a>
           </div>
         </div>
+
+        <!-- Összes eszközalap rendezhető táblázat -->
+        <div class="table-section">
+          <div class="table-header-row">
+            <h2>Összes eszközalap hozama</h2>
+            <span class="table-hint">Kattints a fejlécekre a rendezéshez</span>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th id="thName" onclick="handleTableSort('name')">Eszközalap neve <span class="sort-indicator">▲▼</span></th>
+                  <th id="thDate" onclick="handleTableSort('date')">Dátum <span class="sort-indicator">▲▼</span></th>
+                  <th id="thYtd" class="text-right" onclick="handleTableSort('ytd')">YTD hozam <span class="sort-indicator">▲▼</span></th>
+                </tr>
+              </thead>
+              <tbody id="fundsTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
     </section>
   </main>
@@ -494,6 +623,7 @@
 
     const myPortfolioBtn = document.getElementById("myPortfolioBtn");
     const myPortfolioList = document.getElementById("myPortfolioList");
+    const fundsTableBody = document.getElementById("fundsTableBody");
 
     const imageModal = document.getElementById("imageModal");
     const modalImg = document.getElementById("modalImg");
@@ -501,6 +631,10 @@
     let funds = [];
     let portfolio = {};
     let filteredFunds = [];
+
+    // Táblázat rendezési állapota
+    let currentSortColumn = "ytd";
+    let currentSortAsc = false; // Alapból YTD szerint csökkenő
 
     const MY_PORTFOLIO_IDS = [
       "horizont-10",
@@ -629,6 +763,76 @@
         `;
         myPortfolioList.appendChild(item);
       });
+    }
+
+    // Táblázat renderelése és fejléc frissítése
+    function renderTable() {
+      const sorted = [...funds].sort((a, b) => {
+        if (currentSortColumn === "name") {
+          return currentSortAsc
+            ? a.name.localeCompare(b.name, "hu")
+            : b.name.localeCompare(a.name, "hu");
+        } else if (currentSortColumn === "date") {
+          const dA = a.date || "";
+          const dB = b.date || "";
+          return currentSortAsc ? dA.localeCompare(dB) : dB.localeCompare(dA);
+        } else if (currentSortColumn === "ytd") {
+          const vA = formatReturnValue(a.ytd).val;
+          const vB = formatReturnValue(b.ytd).val;
+          return currentSortAsc ? vA - vB : vB - vA;
+        }
+        return 0;
+      });
+
+      // Fejléc jelzéseinek frissítése
+      const headers = [
+        { id: "thName", col: "name", label: "Eszközalap neve" },
+        { id: "thDate", col: "date", label: "Dátum" },
+        { id: "thYtd", col: "ytd", label: "YTD hozam" }
+      ];
+
+      headers.forEach(h => {
+        const el = document.getElementById(h.id);
+        if (currentSortColumn === h.col) {
+          el.className = h.col === "ytd" ? "text-right active-sort" : "active-sort";
+          el.innerHTML = `${h.label} <span class="sort-indicator">${currentSortAsc ? "▲" : "▼"}</span>`;
+        } else {
+          el.className = h.col === "ytd" ? "text-right" : "";
+          el.innerHTML = `${h.label} <span class="sort-indicator">▲▼</span>`;
+        }
+      });
+
+      fundsTableBody.innerHTML = "";
+
+      sorted.forEach(fund => {
+        const tr = document.createElement("tr");
+        const formatted = formatReturnValue(fund.ytd);
+
+        tr.innerHTML = `
+          <td class="td-name">${fund.name}</td>
+          <td style="color: var(--muted);">${fund.date || "–"}</td>
+          <td class="text-right td-ytd ${formatted.className}">${formatted.text}</td>
+        `;
+
+        // Sorra kattintva kiválasztjuk a felső nézetben és felgörgetünk
+        tr.addEventListener("click", () => {
+          fundSelect.value = fund.id;
+          showFund(fund);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+
+        fundsTableBody.appendChild(tr);
+      });
+    }
+
+    function handleTableSort(column) {
+      if (currentSortColumn === column) {
+        currentSortAsc = !currentSortAsc;
+      } else {
+        currentSortColumn = column;
+        currentSortAsc = column === "name";
+      }
+      renderTable();
     }
 
     function resetView() {
@@ -814,10 +1018,9 @@
         populateSelect(funds);
         resultCount.textContent = `${funds.length} eszközalap`;
 
-        // Alapértelmezett állapot: semmi nincs kiválasztva
         resetView();
-
         renderMyPortfolio(funds);
+        renderTable(); // Táblázat inicializálása
       })
       .catch((error) => {
         console.error(error);
