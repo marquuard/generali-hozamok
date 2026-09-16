@@ -405,11 +405,6 @@
       padding-left: 20px;
     }
 
-    /* A táblázat YTD hozam fejlécének feliratszíne megegyezik a név színével */
-    th#thYtd {
-      color: var(--text);
-    }
-
     .sort-indicator {
       display: inline-block;
       margin-left: 4px;
@@ -417,8 +412,13 @@
       opacity: 0.6;
     }
 
+    /* Rendezéskor sem kap piros színt semelyik fejléc, megmarad a muted/text stílus */
     th.active-sort {
-      color: var(--accent) !important;
+      color: var(--muted) !important;
+    }
+
+    th.active-sort:hover {
+      color: var(--text) !important;
     }
 
     th.active-sort .sort-indicator {
