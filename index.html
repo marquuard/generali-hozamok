@@ -92,7 +92,6 @@
       color: var(--text);
     }
 
-    /* Saját portfólió gomb és lista stílus */
     .my-portfolio-wrap {
       margin-bottom: 22px;
     }
@@ -287,7 +286,6 @@
       font-size: 13px;
     }
 
-    /* Görgetősáv teljes elrejtése */
     .chart-wrap {
       width: 100%;
       overflow: hidden;
@@ -303,7 +301,7 @@
     }
 
     .portfolio-image {
-      display: block;
+      display: none;
       width: 100%;
       max-width: 1000px;
       height: auto;
@@ -319,7 +317,7 @@
     }
 
     .portfolio-empty {
-      display: none;
+      display: block;
       color: var(--muted);
       text-align: center;
       padding: 40px 10px;
@@ -342,7 +340,6 @@
       text-align: center;
     }
 
-    /* Lightbox kinagyítás stílus */
     #imageModal {
       display: none;
       position: fixed;
@@ -424,7 +421,6 @@
         Adatok utolsó frissítése: <strong id="workflow-last-run">Lekérés...</strong>
       </div>
 
-      <!-- Saját portfólió lenyíló modul -->
       <div class="my-portfolio-wrap">
         <button id="myPortfolioBtn" class="my-portfolio-btn" type="button">
           <span>💼 Saját portfólióm</span>
@@ -447,7 +443,7 @@
 
       <div id="content">
         <div class="result">
-          <h2 id="fundName">Betöltés...</h2>
+          <h2 id="fundName">Válassz eszközalapot!</h2>
           <div id="dateBadge" class="date"></div>
           <div class="ytd-label">YTD hozam</div>
           <div id="returnValue" class="neutral">–</div>
@@ -462,11 +458,11 @@
             <div id="portfolioDate" class="portfolio-date"></div>
             <div class="chart-wrap">
               <img id="portfolioImage" class="portfolio-image" alt="Portfólió összetétele" loading="lazy" title="Kattints a kinagyításhoz">
-              <div id="portfolioEmpty" class="portfolio-empty">Nincs portfóliódiagram.</div>
+              <div id="portfolioEmpty" class="portfolio-empty">Válassz ki egy eszközalapot a részletekhez.</div>
             </div>
           </div>
 
-          <div class="source">
+          <div class="source" id="sourceWrap" style="display: none;">
             <a id="sourceLink" href="#" target="_blank" rel="noopener noreferrer">Generali eszközalap-oldal</a>
           </div>
         </div>
@@ -474,7 +470,6 @@
     </section>
   </main>
 
-  <!-- Kinagyított kép modal (lightbox) -->
   <div id="imageModal" aria-hidden="true">
     <img id="modalImg" alt="Kinagyított diagram">
   </div>
@@ -493,6 +488,7 @@
     const portfolioDate = document.getElementById("portfolioDate");
     const portfolioImage = document.getElementById("portfolioImage");
     const portfolioEmpty = document.getElementById("portfolioEmpty");
+    const sourceWrap = document.getElementById("sourceWrap");
     const sourceLink = document.getElementById("sourceLink");
     const themeToggle = document.getElementById("themeToggle");
 
@@ -513,7 +509,6 @@
       "innovacio"
     ];
 
-    // Hozam érték és előjel szigorú normalizálása (kezeli a speciális mínuszjeleket: −, –, —)
     function parseReturn(val) {
       if (val === null || val === undefined || val === "") return null;
       if (typeof val === "number") return val;
@@ -636,9 +631,29 @@
       });
     }
 
+    function resetView() {
+      fundName.textContent = "Válassz eszközalapot!";
+      dateBadge.textContent = "";
+      returnValue.textContent = "–";
+      returnValue.className = "neutral";
+      referenceValue.textContent = "–";
+      portfolioDate.textContent = "";
+      portfolioImage.removeAttribute("src");
+      portfolioImage.style.display = "none";
+      portfolioEmpty.style.display = "block";
+      portfolioEmpty.textContent = "Válassz ki egy eszközalapot a részletekhez.";
+      sourceWrap.style.display = "none";
+    }
+
     function populateSelect(list) {
-      const current = fundSelect.value;
       fundSelect.innerHTML = "";
+
+      const defaultOption = document.createElement("option");
+      defaultOption.value = "";
+      defaultOption.textContent = "– Válassz eszközalapot –";
+      defaultOption.selected = true;
+      defaultOption.disabled = true;
+      fundSelect.appendChild(defaultOption);
 
       list.forEach((fund) => {
         const option = document.createElement("option");
@@ -646,14 +661,13 @@
         option.textContent = fund.name;
         fundSelect.appendChild(option);
       });
-
-      if (list.some((fund) => fund.id === current)) {
-        fundSelect.value = current;
-      }
     }
 
     function showFund(fund) {
-      if (!fund) return;
+      if (!fund) {
+        resetView();
+        return;
+      }
 
       fundName.textContent = fund.name;
       dateBadge.textContent = fund.date ? `Adat: ${fund.date}` : "";
@@ -663,6 +677,7 @@
       returnValue.className = formatted.className;
 
       sourceLink.href = fund.url;
+      sourceWrap.style.display = "block";
 
       const data = portfolio[fund.id];
 
@@ -672,6 +687,7 @@
         portfolioImage.removeAttribute("src");
         portfolioImage.style.display = "none";
         portfolioEmpty.style.display = "block";
+        portfolioEmpty.textContent = "Nincs portfóliódiagram.";
         return;
       }
 
@@ -689,6 +705,7 @@
         portfolioImage.removeAttribute("src");
         portfolioImage.style.display = "none";
         portfolioEmpty.style.display = "block";
+        portfolioEmpty.textContent = "Nincs portfóliódiagram.";
       }
     }
 
@@ -710,9 +727,8 @@
       if (filteredFunds.length === 1) {
         fundSelect.value = filteredFunds[0].id;
         showFund(filteredFunds[0]);
-      } else if (filteredFunds.length > 0) {
-        const current = filteredFunds.find((fund) => fund.id === fundSelect.value);
-        showFund(current || filteredFunds[0]);
+      } else if (filteredFunds.length > 1) {
+        resetView();
       } else {
         fundName.textContent = "Nincs találat";
         dateBadge.textContent = "";
@@ -723,6 +739,8 @@
         portfolioImage.removeAttribute("src");
         portfolioImage.style.display = "none";
         portfolioEmpty.style.display = "block";
+        portfolioEmpty.textContent = "Nincs ilyen nevű eszközalap.";
+        sourceWrap.style.display = "none";
       }
     }
 
@@ -795,7 +813,9 @@
         filteredFunds = funds;
         populateSelect(funds);
         resultCount.textContent = `${funds.length} eszközalap`;
-        showFund(funds[0]);
+
+        // Alapértelmezett állapot: semmi nincs kiválasztva
+        resetView();
 
         renderMyPortfolio(funds);
       })
