@@ -874,7 +874,7 @@
     let currentSortColumn = "ytd";
     let currentSortAsc = false;
 
-    // Alapértelmezett darabszámok fallbackként
+    // Alapértelmezett darabszámok fallbackként[cite: 1]
     let activeUnits = {
       "tallozo": 114542.676,
       "horizont-10": 207670.400,
@@ -939,6 +939,15 @@
         .replace("%", "")
         .trim();
 
+      const num = parseFloat(str);
+      return isNaN(num) ? null : num;
+    }
+
+    // Biztonságos árfolyam-számítás: szöveges, vesszős vagy hiányzó értéket is lebegőpontossá alakít
+    function parsePrice(val) {
+      if (val === null || val === undefined || val === "") return null;
+      if (typeof val === "number") return isNaN(val) ? null : val;
+      const str = String(val).replace(",", ".").replace(/[^\d.-]/g, "").trim();
       const num = parseFloat(str);
       return isNaN(num) ? null : num;
     }
@@ -1043,23 +1052,49 @@
       let grandTotalHuf = 0;
       const portfolioItems = [];
 
+      // Fallback árfolyamok (ha a funds.json-ban még null vagy hiányos az adat)
+      const fallbackPrices = {
+        "tallozo": 2.1257,
+        "horizont-10": 1.8556,
+        "hazai-reszveny": 4.0719,
+        "innovacio": 3.2045
+      };
+
+      const fundLabels = {
+        "hazai-reszveny": "Hazai részvény eszközalap",
+        "horizont-10": "Horizont 10+ vegyes eszközalap",
+        "innovacio": "Innováció részvény eszközalap",
+        "tallozo": "Tallózó abszolút hozam eszközalap"
+      };
+
       Object.keys(activeUnits).forEach(fundId => {
-        const units = activeUnits[fundId] || 0;
-        const fund = fundList.find(f => f.id === fundId) || { name: fundId, price: null };
-        const price = fund.price !== null && fund.price !== undefined ? fund.price : 0;
+        const units = parseFloat(activeUnits[fundId]) || 0;
+        const fund = fundList.find(f => f.id === fundId);
+        
+        let price = null;
+        if (fund && fund.price !== null && fund.price !== undefined) {
+          price = parsePrice(fund.price);
+        }
+        
+        // Ha nem sikerült kinyerni, alkalmazzuk a tartalék árfolyamot
+        if (price === null || price <= 0) {
+          price = fallbackPrices[fundId] || 1.0;
+        }
+
         const valueHuf = units * price;
         grandTotalHuf += valueHuf;
 
         portfolioItems.push({
           id: fundId,
-          name: fund.name,
-          price: fund.price,
+          name: (fund && fund.name) ? fund.name : (fundLabels[fundId] || fundId),
+          price: price,
           units: units,
           valueHuf: valueHuf
         });
       });
 
-      totalPortfolioHuf.textContent = grandTotalHuf > 0 ? formatHuf(grandTotalHuf) : "Árfolyamadatok lekérése...";
+      // Fő összeg kiírása
+      totalPortfolioHuf.textContent = grandTotalHuf > 0 ? formatHuf(grandTotalHuf) : "0 Ft";
       portfolioItems.sort((a, b) => b.valueHuf - a.valueHuf);
 
       portfolioItems.forEach(item => {
