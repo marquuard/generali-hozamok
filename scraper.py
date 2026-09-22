@@ -11,11 +11,6 @@ MAIN_URL = (
     "befektetesek/eszkozalapjaink.aspx"
 )
 
-RATES_URL = (
-    "https://www.generali.hu/ugyfelszolgalat/informaciok/"
-    "befektetesek/arfolyamok.aspx"
-)
-
 OUTPUT_FILE = Path("funds.json")
 
 HEADERS = {
@@ -81,31 +76,6 @@ def parse_hungarian_float(val_str):
     return None
 
 
-def fetch_central_prices():
-    """
-    Megkísérli a Generali központi árfolyamtáblázatából kinyerni az összes alap legfrissebb árfolyamát.
-    """
-    prices = {}
-    try:
-        resp = requests.get(RATES_URL, headers=HEADERS, timeout=25)
-        if resp.status_code == 200:
-            soup = BeautifulSoup(resp.text, "html.parser")
-            for tr in soup.find_all("tr"):
-                row_text = clean(tr.get_text(" ", strip=True))
-                row_norm = norm(row_text)
-                for fund_id, name in FUNDS:
-                    if norm(name) in row_norm:
-                        tds = tr.find_all(["td", "th"])
-                        for td in reversed(tds):
-                            val = parse_hungarian_float(td.get_text(strip=True))
-                            if val is not None and val > 0:
-                                prices[fund_id] = val
-                                break
-    except Exception as e:
-        print(f"Központi árfolyamtábla lekérési figyelmeztetés: {e}")
-    return prices
-
-
 def discover_fund_urls():
     response = requests.get(MAIN_URL, headers=HEADERS, timeout=30)
     response.raise_for_status()
@@ -133,7 +103,58 @@ def discover_fund_urls():
     return [found[fund_id] for fund_id, _ in FUNDS]
 
 
-def scrape_fund_page(fund, central_price):
+def extract_chart_data_from_raw_html(raw_html):
+    """
+    Közvetlenül a nyers letöltött HTML szövegből nyeri ki a grafikon
+    amCharts dataProvider tömbjének legutolsó értékét és dátumát.
+    """
+    chart_price = None
+    chart_date = None
+
+    # 1. Kifejezett dataProvider tömb keresése többsoros módban
+    provider_match = re.search(
+        r'dataProvider\s*[:=]\s*(\[\s*\{[\s\S]*?\}\s*\])',
+        raw_html,
+        re.IGNORECASE
+    )
+
+    chart_blob = provider_match.group(1) if provider_match else raw_html
+
+    # 2. Minden olyan JSON objektum keresése, ami dátumot és értéket tartalmaz
+    # Minta: { "date": "2026-09-18", ... "value": 2.13471 ... }
+    item_matches = re.findall(
+        r'\{[^{}]*?[\'"](?:date|datum)[\'"]\s*:\s*[\'"](\d{4}[.\-/]\d{2}[.\-/]\d{2})[\'"][^{}]*?[\'"](?:value|arfolyam|price|netto)[\'"]\s*:\s*([0-9]+(?:[.,][0-9]+)?)[^{}]*?\}',
+        chart_blob,
+        re.IGNORECASE
+    )
+
+    if not item_matches:
+        # Alternatív sorrend: előbb az érték, utána a dátum
+        item_matches = re.findall(
+            r'\{[^{}]*?[\'"](?:value|arfolyam|price|netto)[\'"]\s*:\s*([0-9]+(?:[.,][0-9]+)?)[^{}]*?[\'"](?:date|datum)[\'"]\s*:\s*[\'"](\d{4}[.\-/]\d{2}[.\-/]\d{2})[\'"][^{}]*?\}',
+            chart_blob,
+            re.IGNORECASE
+        )
+        if item_matches:
+            item_matches = [(m[1], m[0]) for m in item_matches]
+
+    if item_matches:
+        # Dátum szerint sorba rendezzük, hogy garantáltan a legfrissebb záróérték legyen az utolsó
+        item_matches.sort(key=lambda x: x[0].replace("-", "").replace(".", "").replace("/", ""))
+        last_item = item_matches[-1]
+        chart_date = last_item[0].replace("-", ".").replace("/", ".")
+        chart_price = float(last_item[1].replace(",", "."))
+
+    # 3. Fallback: Ha objektumonként nem állt össze, kikeressük a tömb utolsó számértékét
+    if chart_price is None and provider_match:
+        all_floats = re.findall(r'[\'"](?:value|price|arfolyam)[\'"]\s*:\s*([0-9]+(?:[.,][0-9]+)?)', chart_blob, re.I)
+        if all_floats:
+            chart_price = float(all_floats[-1].replace(",", "."))
+
+    return chart_price, chart_date
+
+
+def scrape_fund_data(fund):
     response = requests.get(fund["url"], headers=HEADERS, timeout=30)
     response.raise_for_status()
 
@@ -141,42 +162,16 @@ def scrape_fund_page(fund, central_price):
     soup = BeautifulSoup(raw_html, "html.parser")
     page_text = soup.get_text(" ", strip=True)
 
-    price_val = central_price
-    date_val = None
+    # 1. Árfolyam és Dátum kinyerése közvetlenül a grafikon forrásából
+    price_val, date_val = extract_chart_data_from_raw_html(raw_html)
 
-    # 1. Keresés az aloldal összes script tagjében (nyers HTML-ben is)
-    if price_val is None:
-        # Minden szám ami dátumhoz kapcsolódik a kódban
-        matches = re.findall(
-            r'(\d{4}[.\-/]\d{2}[.\-/]\d{2})[^\d]{1,60}([0-9]+(?:[.,][0-9]{2,6}))',
-            raw_html
-        )
-        if matches:
-            matches.sort(key=lambda x: x[0].replace("-", "").replace(".", "").replace("/", ""))
-            date_val = matches[-1][0].replace("-", ".").replace("/", ".")
-            price_val = float(matches[-1][1].replace(",", "."))
-
-    # 2. Ha még mindig nincs árfolyam, táblázatok és szöveg vizsgálata
-    if price_val is None:
-        patterns = [
-            r"(?:árfolyam|nettó\s*eszközérték)[^\d]{1,25}(\d+[.,]\d{2,6})",
-            r"(\d+[.,]\d{4,6})\s*(?:huf|ft)"
-        ]
-        for pat in patterns:
-            m = re.search(pat, page_text, re.IGNORECASE)
-            if m:
-                val = parse_hungarian_float(m.group(1))
-                if val and val > 0:
-                    price_val = val
-                    break
-
-    # Dátum kinyerése
+    # Ha a diagramból nem jött dátum, kikeressük a HTML szövegből
     if not date_val:
         dates = re.findall(r"\b(20\d{2}[.-]\d{2}[.-]\d{2})\b", page_text)
         if dates:
             date_val = sorted([d.replace("-", ".") for d in dates])[-1]
 
-    # 3. YTD hozam kinyerése
+    # 2. YTD hozam kinyerése a táblázatból / szövegből
     ytd_val = None
     for tr in soup.find_all("tr"):
         row_text = clean(tr.get_text(" ", strip=True))
@@ -211,19 +206,13 @@ def scrape_fund_page(fund, central_price):
 
 
 def main():
-    print("Központi árfolyamtáblázat lekérdezése...")
-    central_prices = fetch_central_prices()
-    if central_prices:
-        print(f"Sikerült {len(central_prices)} árfolyamot előzetesen kinyerni a központi oldalról.")
-
     print("Eszközalapok linkjeinek felderítése...")
     fund_list = discover_fund_urls()
 
     results = []
     for i, fund in enumerate(fund_list, 1):
         print(f"[{i}/18] Adatok lekérése: {fund['name']}...")
-        preset_price = central_prices.get(fund["id"])
-        data = scrape_fund_page(fund, preset_price)
+        data = scrape_fund_data(fund)
         print(f"       -> Árfolyam: {data['price']} HUF | YTD: {data['ytd']}% | Dátum: {data['date']}")
         results.append(data)
 
