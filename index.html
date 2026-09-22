@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Generali eszközalapok</title>
 
+  <!-- Chart.js betöltése a portfólió-történet diagramhoz -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <script>
     (function () {
       try {
@@ -31,6 +34,9 @@
       --table-hover: #f1f3f5;
       --bar-pos: rgba(22, 131, 59, 0.18);
       --bar-neg: rgba(189, 30, 45, 0.18);
+      --chart-line: #b21f2d;
+      --chart-bg: rgba(178, 31, 45, 0.08);
+      --chart-grid: rgba(0, 0, 0, 0.06);
     }
 
     html.dark {
@@ -48,6 +54,9 @@
       --table-hover: #292e33;
       --bar-pos: rgba(73, 201, 120, 0.22);
       --bar-neg: rgba(255, 104, 120, 0.22);
+      --chart-line: #ef5262;
+      --chart-bg: rgba(239, 82, 98, 0.12);
+      --chart-grid: rgba(255, 255, 255, 0.06);
     }
 
     * { box-sizing: border-box; }
@@ -121,6 +130,37 @@
       color: var(--accent);
     }
 
+    /* Portfólió vagyongörbe konténer */
+    .history-chart-card {
+      background: var(--item-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 20px;
+      margin-bottom: 22px;
+    }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .history-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .history-chart-wrap {
+      position: relative;
+      width: 100%;
+      height: 220px;
+    }
+
     .my-portfolio-wrap {
       margin-bottom: 22px;
     }
@@ -168,7 +208,6 @@
       overflow-x: auto;
     }
 
-    /* 5 oszlop: Név | Nettó eszközérték | Darabszám | Érték (HUF) | Súly (%) */
     .portfolio-grid-header {
       display: grid;
       grid-template-columns: 2fr 1.1fr 1fr 1.2fr 0.8fr;
@@ -727,9 +766,21 @@
         Adatok utolsó frissítése: <strong id="workflow-last-run">Lekérés...</strong>
       </div>
 
+      <!-- Fő portfólió kártya -->
       <div class="total-portfolio-card">
         <div class="total-portfolio-label">Saját portfólió aktuális értéke</div>
         <div id="totalPortfolioHuf" class="total-portfolio-value">Számítás...</div>
+      </div>
+
+      <!-- ÚJ: Portfólió-érték történet diagram -->
+      <div id="historyCard" class="history-chart-card" style="display: none;">
+        <div class="history-header">
+          <span class="history-title">📈 Portfólió vagyongörbe</span>
+          <span id="historyChangeBadge" style="font-size: 12px; font-weight: 700;"></span>
+        </div>
+        <div class="history-chart-wrap">
+          <canvas id="portfolioHistoryChart"></canvas>
+        </div>
       </div>
 
       <div class="my-portfolio-wrap">
@@ -831,9 +882,6 @@
   <button id="themeToggle" type="button" aria-label="Dark mode" title="Dark mode"></button>
 
   <script>
-    // ==========================================
-    // ⚙️ FELHŐ-SZINKRONIZÁCIÓ BEÁLLÍTÁSA
-    // ==========================================
     const JSONBIN_BIN_ID = "6aab1846ac6210605ad64a79"; 
     const JSONBIN_API_KEY = "$2a$10$.wAFrVJnX1moDh4euoeNHeKCtJcmocpcCp07W8Q1aXqirBfMKGslu"; 
 
@@ -867,14 +915,18 @@
     const saveUnitsBtn = document.getElementById("saveUnitsBtn");
     const unitsInputsContainer = document.getElementById("unitsInputsContainer");
 
+    const historyCard = document.getElementById("historyCard");
+    const historyChangeBadge = document.getElementById("historyChangeBadge");
+    let historyChartInstance = null;
+
     let funds = [];
     let portfolio = {};
     let filteredFunds = [];
+    let portfolioHistory = [];
 
     let currentSortColumn = "ytd";
     let currentSortAsc = false;
 
-    // Alapértelmezett darabszámok fallbackként[cite: 1]
     let activeUnits = {
       "tallozo": 114542.676,
       "horizont-10": 207670.400,
@@ -882,7 +934,6 @@
       "innovacio": 152078.356
     };
 
-    // Darabszámok lekérése a felhőből
     async function fetchCloudUnits() {
       if (!JSONBIN_BIN_ID || JSONBIN_BIN_ID.includes("IDE_MASOLD")) {
         return activeUnits;
@@ -895,12 +946,11 @@
         const data = await res.json();
         return data.record || activeUnits;
       } catch (err) {
-        console.warn("Nem sikerült a felhőből betölteni a darabszámokat, alapértelmezett használata:", err);
+        console.warn("Alapértelmezett darabszámok használata:", err);
         return activeUnits;
       }
     }
 
-    // Új darabszámok mentése a felhőbe
     async function saveCloudUnits(newUnits) {
       if (!JSONBIN_BIN_ID || JSONBIN_BIN_ID.includes("IDE_MASOLD")) {
         activeUnits = newUnits;
@@ -922,7 +972,7 @@
         if (!res.ok) throw new Error("Felhő mentési hiba");
         activeUnits = newUnits;
       } catch (err) {
-        alert("Hiba történt a felhőbe mentéskor: " + err.message);
+        alert("Hiba történt: " + err.message);
       } finally {
         saveUnitsBtn.textContent = "Mentés & Szinkronizálás";
         saveUnitsBtn.disabled = false;
@@ -932,18 +982,11 @@
     function parseReturn(val) {
       if (val === null || val === undefined || val === "") return null;
       if (typeof val === "number") return val;
-
-      const str = String(val)
-        .replace(/[−–—]/g, "-")
-        .replace(",", ".")
-        .replace("%", "")
-        .trim();
-
+      const str = String(val).replace(/[−–—]/g, "-").replace(",", ".").replace("%", "").trim();
       const num = parseFloat(str);
       return isNaN(num) ? null : num;
     }
 
-    // Biztonságos árfolyam-számítás: szöveges, vesszős vagy hiányzó értéket is lebegőpontossá alakít
     function parsePrice(val) {
       if (val === null || val === undefined || val === "") return null;
       if (typeof val === "number") return isNaN(val) ? null : val;
@@ -954,29 +997,10 @@
 
     function formatReturnValue(val) {
       const num = parseReturn(val);
-      if (num === null) {
-        return { text: "Nincs adat", className: "neutral", val: -9999 };
-      }
-
-      if (num > 0) {
-        return {
-          text: `+${num.toFixed(2).replace(".", ",")}%`,
-          className: "positive",
-          val: num
-        };
-      } else if (num < 0) {
-        return {
-          text: `-${Math.abs(num).toFixed(2).replace(".", ",")}%`,
-          className: "negative",
-          val: num
-        };
-      } else {
-        return {
-          text: `0,00%`,
-          className: "neutral",
-          val: 0
-        };
-      }
+      if (num === null) return { text: "Nincs adat", className: "neutral", val: -9999 };
+      if (num > 0) return { text: `+${num.toFixed(2).replace(".", ",")}%`, className: "positive", val: num };
+      if (num < 0) return { text: `-${Math.abs(num).toFixed(2).replace(".", ",")}%`, className: "negative", val: num };
+      return { text: `0,00%`, className: "neutral", val: 0 };
     }
 
     function formatHuf(val) {
@@ -989,34 +1013,22 @@
     }
 
     function normalize(text) {
-      return String(text || "")
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .toLowerCase()
-        .replace(/\s+/g, " ")
-        .trim();
+      return String(text || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
     }
 
     function setThemeIcon() {
       const dark = document.documentElement.classList.contains("dark");
-
       themeToggle.innerHTML = dark
-        ? `<svg viewBox="0 0 24 24" aria-hidden="true">
-             <circle cx="12" cy="12" r="4"></circle>
-             <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
-           </svg>`
-        : `<svg viewBox="0 0 24 24" aria-hidden="true">
-             <path d="M21 12.8A8.5 8.5 0 0 1 11.2 3a8.5 8.5 0 1 0 9.8 9.8Z"></path>
-           </svg>`;
-
+        ? `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>`
+        : `<svg viewBox="0 0 24 24"><path d="M21 12.8A8.5 8.5 0 0 1 11.2 3a8.5 8.5 0 1 0 9.8 9.8Z"></path></svg>`;
       themeToggle.title = dark ? "Világos mód" : "Dark mode";
-      themeToggle.setAttribute("aria-label", dark ? "Világos mód" : "Dark mode");
     }
 
     themeToggle.addEventListener("click", () => {
       const dark = document.documentElement.classList.toggle("dark");
       localStorage.setItem("generali-theme", dark ? "dark" : "light");
       setThemeIcon();
+      renderPortfolioHistoryChart();
     });
 
     setThemeIcon();
@@ -1028,9 +1040,7 @@
       }
     });
 
-    imageModal.addEventListener("click", () => {
-      imageModal.style.display = "none";
-    });
+    imageModal.addEventListener("click", () => { imageModal.style.display = "none"; });
 
     window.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
@@ -1045,14 +1055,12 @@
       myPortfolioBtn.classList.toggle("open", isClosed);
     });
 
-    // Portfólió értékének és bontásának kiszámítása
     function renderMyPortfolio(fundList) {
       myPortfolioRows.innerHTML = "";
 
       let grandTotalHuf = 0;
       const portfolioItems = [];
 
-      // Fallback árfolyamok (ha a funds.json-ban még null vagy hiányos az adat)
       const fallbackPrices = {
         "tallozo": 2.1257,
         "horizont-10": 1.8556,
@@ -1076,7 +1084,6 @@
           price = parsePrice(fund.price);
         }
         
-        // Ha nem sikerült kinyerni, alkalmazzuk a tartalék árfolyamot
         if (price === null || price <= 0) {
           price = fallbackPrices[fundId] || 1.0;
         }
@@ -1093,7 +1100,6 @@
         });
       });
 
-      // Fő összeg kiírása
       totalPortfolioHuf.textContent = grandTotalHuf > 0 ? formatHuf(grandTotalHuf) : "0 Ft";
       portfolioItems.sort((a, b) => b.valueHuf - a.valueHuf);
 
@@ -1112,6 +1118,98 @@
           <div class="text-right" style="color: var(--muted); font-size: 13px;">${weightPercent}%</div>
         `;
         myPortfolioRows.appendChild(row);
+      });
+    }
+
+    // Vagyongörbe kirajzolása Chart.js-sel
+    function renderPortfolioHistoryChart() {
+      if (!portfolioHistory || portfolioHistory.length === 0) {
+        historyCard.style.display = "none";
+        return;
+      }
+
+      historyCard.style.display = "block";
+
+      const labels = portfolioHistory.map(h => h.date);
+      const dataPoints = portfolioHistory.map(h => h.value);
+
+      // Változás számítása az első és utolsó pont között
+      if (portfolioHistory.length >= 2) {
+        const firstVal = portfolioHistory[0].value;
+        const lastVal = portfolioHistory[portfolioHistory.length - 1].value;
+        const diffHuf = lastVal - firstVal;
+        const diffPercent = ((diffHuf / firstVal) * 100).toFixed(2);
+
+        if (diffHuf >= 0) {
+          historyChangeBadge.textContent = `+${formatHuf(diffHuf)} (+${diffPercent}%)`;
+          historyChangeBadge.style.color = "var(--positive)";
+        } else {
+          historyChangeBadge.textContent = `-${formatHuf(Math.abs(diffHuf))} (${diffPercent}%)`;
+          historyChangeBadge.style.color = "var(--negative)";
+        }
+      } else {
+        historyChangeBadge.textContent = "";
+      }
+
+      const isDark = document.documentElement.classList.contains("dark");
+      const lineColor = isDark ? "#ef5262" : "#b21f2d";
+      const fillColor = isDark ? "rgba(239, 82, 98, 0.12)" : "rgba(178, 31, 45, 0.08)";
+      const gridColor = isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)";
+      const textColor = isDark ? "#aeb5bb" : "#6c727a";
+
+      const ctx = document.getElementById("portfolioHistoryChart").getContext("2d");
+
+      if (historyChartInstance) {
+        historyChartInstance.destroy();
+      }
+
+      historyChartInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [{
+            label: "Portfólió összértéke (Ft)",
+            data: dataPoints,
+            borderColor: lineColor,
+            backgroundColor: fillColor,
+            fill: true,
+            tension: 0.25,
+            borderWidth: 2.5,
+            pointRadius: dataPoints.length > 30 ? 0 : 3,
+            pointHoverRadius: 6,
+            pointBackgroundColor: lineColor,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function (context) {
+                  return formatHuf(context.parsed.y);
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: textColor, font: { size: 11 } }
+            },
+            y: {
+              grid: { color: gridColor },
+              ticks: {
+                color: textColor,
+                font: { size: 11 },
+                callback: function (val) {
+                  return (val / 1000000).toFixed(2) + " M Ft";
+                }
+              }
+            }
+          }
+        }
       });
     }
 
@@ -1138,17 +1236,13 @@
       unitsModal.style.display = "flex";
     });
 
-    cancelUnitsBtn.addEventListener("click", () => {
-      unitsModal.style.display = "none";
-    });
+    cancelUnitsBtn.addEventListener("click", () => { unitsModal.style.display = "none"; });
 
     saveUnitsBtn.addEventListener("click", async () => {
       const updatedUnits = {};
       Object.keys(activeUnits).forEach(id => {
         const input = document.getElementById(`input-unit-${id}`);
-        if (input) {
-          updatedUnits[id] = parseFloat(input.value) || 0;
-        }
+        if (input) updatedUnits[id] = parseFloat(input.value) || 0;
       });
 
       await saveCloudUnits(updatedUnits);
@@ -1160,17 +1254,13 @@
       let maxAbsValue = 0;
       funds.forEach(f => {
         const parsed = parseReturn(f.ytd);
-        if (parsed !== null && Math.abs(parsed) > maxAbsValue) {
-          maxAbsValue = Math.abs(parsed);
-        }
+        if (parsed !== null && Math.abs(parsed) > maxAbsValue) maxAbsValue = Math.abs(parsed);
       });
       if (maxAbsValue === 0) maxAbsValue = 1;
 
       const sorted = [...funds].sort((a, b) => {
         if (currentSortColumn === "name") {
-          return currentSortAsc
-            ? a.name.localeCompare(b.name, "hu")
-            : b.name.localeCompare(a.name, "hu");
+          return currentSortAsc ? a.name.localeCompare(b.name, "hu") : b.name.localeCompare(a.name, "hu");
         } else if (currentSortColumn === "ytd") {
           const vA = formatReturnValue(a.ytd).val;
           const vB = formatReturnValue(b.ytd).val;
@@ -1256,7 +1346,6 @@
 
     function populateSelect(list) {
       fundSelect.innerHTML = "";
-
       const defaultOption = document.createElement("option");
       defaultOption.value = "";
       defaultOption.textContent = "– Válassz eszközalapot –";
@@ -1273,11 +1362,7 @@
     }
 
     function showFund(fund) {
-      if (!fund) {
-        resetView();
-        return;
-      }
-
+      if (!fund) { resetView(); return; }
       fundName.textContent = fund.name;
       dateBadge.textContent = fund.date ? `Adat: ${fund.date}` : "";
 
@@ -1289,7 +1374,6 @@
       sourceWrap.style.display = "block";
 
       const data = portfolio[fund.id];
-
       if (!data) {
         referenceValue.textContent = "Nincs adat";
         portfolioDate.textContent = "";
@@ -1301,9 +1385,7 @@
       }
 
       referenceValue.textContent = data.reference_index || "Nincs adat";
-      portfolioDate.textContent = data.portfolio_date
-        ? `Portfólióadat dátuma: ${data.portfolio_date}`
-        : "Statikus portfólióadat";
+      portfolioDate.textContent = data.portfolio_date ? `Portfólióadat dátuma: ${data.portfolio_date}` : "Statikus portfólióadat";
 
       if (data.portfolio_image) {
         portfolioImage.src = `${data.portfolio_image}?v=3`;
@@ -1320,17 +1402,9 @@
 
     function applySearch() {
       const query = normalize(searchInput.value);
-
-      filteredFunds = funds.filter((fund) => {
-        return normalize(fund.name).includes(query);
-      });
-
+      filteredFunds = funds.filter(fund => normalize(fund.name).includes(query));
       populateSelect(filteredFunds);
-
-      resultCount.textContent = query
-        ? `${filteredFunds.length} találat`
-        : `${funds.length} eszközalap`;
-
+      resultCount.textContent = query ? `${filteredFunds.length} találat` : `${funds.length} eszközalap`;
       clearSearch.style.display = query ? "block" : "none";
 
       if (filteredFunds.length === 1) {
@@ -1354,7 +1428,6 @@
     }
 
     searchInput.addEventListener("input", applySearch);
-
     clearSearch.addEventListener("click", () => {
       searchInput.value = "";
       applySearch();
@@ -1362,7 +1435,7 @@
     });
 
     fundSelect.addEventListener("change", () => {
-      const selected = funds.find((fund) => fund.id === fundSelect.value);
+      const selected = funds.find(fund => fund.id === fundSelect.value);
       showFund(selected);
     });
 
@@ -1379,23 +1452,14 @@
           repo = "generali-hozamok";
         }
 
-        const res = await fetch(
-          `https://api.github.com/repos/${owner}/${repo}/actions/runs?status=success&per_page=1`
-        );
-
+        const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/runs?status=success&per_page=1`);
         if (!res.ok) throw new Error("API hiba");
-
         const data = await res.json();
 
         if (data.workflow_runs && data.workflow_runs.length > 0) {
           const runDate = new Date(data.workflow_runs[0].updated_at);
           label.textContent = runDate.toLocaleString("hu-HU", {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            timeZone: "Europe/Budapest"
+            year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Budapest"
           });
         } else {
           label.textContent = "Nem elérhető";
@@ -1407,16 +1471,18 @@
 
     loadLastWorkflowRun();
 
-    // Adatok betöltése párhuzamosan (Fájlok + Felhő darabszámok)
+    // Párhuzamos adatbetöltés: funds.json + portfolio.json + cloudUnits + history.json
     Promise.all([
-      fetch("funds.json", { cache: "no-store" }).then((r) => r.json()),
-      fetch("portfolio.json", { cache: "no-store" }).then((r) => r.json()),
-      fetchCloudUnits()
+      fetch("funds.json", { cache: "no-store" }).then(r => r.json()),
+      fetch("portfolio.json", { cache: "no-store" }).then(r => r.json()),
+      fetchCloudUnits(),
+      fetch("history.json", { cache: "no-store" }).then(r => r.json()).catch(() => [])
     ])
-      .then(([fundData, portfolioData, cloudUnits]) => {
+      .then(([fundData, portfolioData, cloudUnits, historyData]) => {
         funds = fundData;
         portfolio = portfolioData.funds || {};
         activeUnits = cloudUnits;
+        portfolioHistory = Array.isArray(historyData) ? historyData : [];
 
         filteredFunds = funds;
         populateSelect(funds);
@@ -1425,6 +1491,7 @@
         resetView();
         renderMyPortfolio(funds);
         renderTable();
+        renderPortfolioHistoryChart();
       })
       .catch((error) => {
         console.error(error);
