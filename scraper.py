@@ -52,10 +52,6 @@ def norm(text):
 
 
 def parse_hungarian_float(val_str):
-    """
-    Kezeli az összes létező kötőjelet, Unicode mínuszjelet és vesszőt,
-    biztosítva a negatív hozamok és tizedestörtek helyes előjelét.
-    """
     if not val_str:
         return None
 
@@ -107,6 +103,44 @@ def discover_fund_urls():
     return [found[fund_id] for fund_id, _ in FUNDS]
 
 
+def extract_chart_data(soup):
+    """
+    Kikeresi a grafikon JavaScript tömbjét,
+    és visszaadja a legutolsó érvényes árfolyamot és dátumot.
+    """
+    for script in soup.find_all("script"):
+        script_text = script.string or ""
+        if not script_text:
+            continue
+
+        if "dataProvider" in script_text or "amCharts" in script_text:
+            # Dátum és lebegőpontos szám párok kinyerése a dataProvider tömbből
+            entries = re.findall(
+                r'\{[^{}]*?(?:date|datum)[\'"]?\s*:\s*[\'"]?(\d{4}[.\-/]\d{2}[.\-/]\d{2})[^{}]*?(?:value|price|arfolyam|netto)[\'"]?\s*:\s*([0-9]+(?:[.,][0-9]+)?)[^{}]*?\}',
+                script_text,
+                re.IGNORECASE,
+            )
+            if entries:
+                last_entry = entries[-1]
+                chart_date = last_entry[0].replace("-", ".").replace("/", ".")
+                chart_price = float(last_entry[1].replace(",", "."))
+                return chart_price, chart_date
+
+            # Alternatív minta: lebegőpontos value értékek listája
+            val_matches = re.findall(
+                r'[\'"]?(?:value|price|arfolyam)[\'"]?\s*:\s*([0-9]+(?:[.,][0-9]+)?)',
+                script_text,
+                re.IGNORECASE,
+            )
+            if val_matches:
+                try:
+                    return float(val_matches[-1].replace(",", ".")), None
+                except ValueError:
+                    pass
+
+    return None, None
+
+
 def scrape_fund_data(fund):
     response = requests.get(fund["url"], headers=HEADERS, timeout=30)
     response.raise_for_status()
@@ -114,13 +148,43 @@ def scrape_fund_data(fund):
     soup = BeautifulSoup(response.text, "html.parser")
     page_text = soup.get_text(" ", strip=True)
 
-    # 1. Dátum kinyerése (pl. 2026.09.01)
-    date_match = re.search(r"\b(20\d{2}[.-]\d{2}[.-]\d{2})\b", page_text)
-    date_val = date_match.group(1).replace("-", ".") if date_match else None
+    # 1. Grafikonból a legutolsó árfolyam és dátum kinyerése
+    chart_price, chart_date = extract_chart_data(soup)
 
-    # 2. YTD hozam keresése a táblázatokban vagy a szövegben
+    price_val = chart_price
+    date_val = chart_date
+
+    # Ha a grafikonból nem jött dátum, kinyerjük a szövegből
+    if not date_val:
+        date_match = re.search(r"\b(20\d{2}[.-]\d{2}[.-]\d{2})\b", page_text)
+        date_val = date_match.group(1).replace("-", ".") if date_match else None
+
+    # Fallback árfolyam-keresés, ha a grafikon scriptje nem tartalmazta
+    if price_val is None:
+        for tr in soup.find_all("tr"):
+            row_text = clean(tr.get_text(" ", strip=True))
+            if re.search(r"(?:aktuális\s*árfolyam|árfolyam|nettó\s*eszközérték)", row_text, re.I) and not re.search(r"deviza", row_text, re.I):
+                tds = tr.find_all(["td", "th"])
+                for td in reversed(tds):
+                    td_txt = clean(td.get_text(strip=True))
+                    parsed = parse_hungarian_float(td_txt)
+                    if parsed is not None and parsed > 0:
+                        price_val = parsed
+                        break
+            if price_val is not None:
+                break
+
+    if price_val is None:
+        price_match = re.search(
+            r"(?:aktuális\s*)?(?:árfolyam|nettó\s*eszközérték)\s*[:\-–]?\s*(\d+(?:[.,]\d+)?)\s*(?:huf|ft)?",
+            page_text,
+            re.I,
+        )
+        if price_match:
+            price_val = parse_hungarian_float(price_match.group(1))
+
+    # 2. YTD hozam kinyerése
     ytd_val = None
-
     for tr in soup.find_all("tr"):
         row_text = clean(tr.get_text(" ", strip=True))
         if re.search(r"(?:év\s*elejétől|ytd)", row_text, re.I):
@@ -143,53 +207,13 @@ def scrape_fund_data(fund):
         if ytd_match:
             ytd_val = parse_hungarian_float(ytd_match.group(1))
 
-    # 3. Napi árfolyam (HUF / egység) kinyerése
-    price_val = None
-
-    # 3.1. Táblázatos keresés 'árfolyam' címke alapján
-    for tr in soup.find_all("tr"):
-        row_text = clean(tr.get_text(" ", strip=True))
-        if re.search(r"(?:aktuális\s*árfolyam|árfolyam)", row_text, re.I) and not re.search(r"deviza", row_text, re.I):
-            tds = tr.find_all(["td", "th"])
-            for td in reversed(tds):
-                td_txt = clean(td.get_text(strip=True))
-                parsed = parse_hungarian_float(td_txt)
-                if parsed is not None and parsed > 0:
-                    price_val = parsed
-                    break
-        if price_val is not None:
-            break
-
-    # 3.2. Szöveges regex keresés 'Árfolyam: X,XXXX' mintára
-    if price_val is None:
-        price_match = re.search(
-            r"(?:aktuális\s*)?árfolyam\s*[:\-–]?\s*(\d+(?:[.,]\d+)?)\s*(?:huf|ft)?",
-            page_text,
-            re.I,
-        )
-        if price_match:
-            price_val = parse_hungarian_float(price_match.group(1))
-
-    # 3.3. amCharts diagram Javascript blokk vizsgálata (ha csak scriptben szerepel)
-    if price_val is None:
-        for script in soup.find_all("script"):
-            script_text = script.string or ""
-            if "amCharts" in script_text or "dataProvider" in script_text:
-                chart_prices = re.findall(r'["\']?(?:value|arfolyam|price)["\']?\s*:\s*(\d+(?:\.\d+)?)', script_text)
-                if chart_prices:
-                    try:
-                        price_val = float(chart_prices[-1])
-                        break
-                    except ValueError:
-                        pass
-
     return {
         "id": fund["id"],
         "name": fund["name"],
         "url": fund["url"],
         "date": date_val,
         "ytd": ytd_val,
-        "price": price_val
+        "price": price_val,
     }
 
 
@@ -201,7 +225,7 @@ def main():
     for i, fund in enumerate(fund_list, 1):
         print(f"[{i}/18] Adatok lekérése: {fund['name']}...")
         data = scrape_fund_data(fund)
-        print(f"       -> YTD: {data['ytd']}%, Árfolyam: {data['price']} HUF")
+        print(f"       -> Árfolyam: {data['price']} HUF | YTD: {data['ytd']}% | Dátum: {data['date']}")
         results.append(data)
 
     if len(results) != 18:
@@ -211,7 +235,7 @@ def main():
         json.dumps(results, ensure_ascii=False, indent=2),
         encoding="utf-8"
     )
-    print("Sikeres futás: funds.json elmentve (árfolyamokkal kiegészítve).")
+    print("Sikeres futás: funds.json elmentve (grafikonból kiolvasott árfolyamokkal).")
 
 
 if __name__ == "__main__":
