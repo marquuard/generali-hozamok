@@ -12,6 +12,18 @@ MAIN_URL = (
 )
 
 OUTPUT_FILE = Path("funds.json")
+HISTORY_FILE = Path("history.json")
+
+# JSONBin beállítások a darabszámok lekéréséhez az összérték számításához
+JSONBIN_BIN_ID = "6aab1846ac6210605ad64a79"
+JSONBIN_API_KEY = "$2a$10$.wAFrVJnX1moDh4euoeNHeKCtJcmocpcCp07W8Q1aXqirBfMKGslu"
+
+DEFAULT_UNITS = {
+    "tallozo": 114542.676,
+    "horizont-10": 207670.400,
+    "hazai-reszveny": 214985.923,
+    "innovacio": 152078.356,
+}
 
 HEADERS = {
     "User-Agent": (
@@ -107,21 +119,16 @@ def extract_chart_data(raw_html):
     """
     Kifejezetten a Generali chartData tömbjéből nyeri ki a legutolsó
     Rate (árfolyam) és date (new Date) értékeket.
-    Formátum:
-    {date:new Date(2026, 8, 17),Rate:2.13471,NetAssetValue:18764076672.00}
     """
     chart_price = None
     chart_date = None
 
-    # Megkeressük a chartData tömböt
     match = re.search(r'var\s+chartData\s*=\s*\[(.*?)\];', raw_html, re.DOTALL)
     blob = match.group(1) if match else raw_html
 
-    # Kinyerjük a Date és Rate párokat
-    # A JS hónapok 0-tól indulnak (0 = Január, 8 = Szeptember), ezért +1
     entries = re.findall(
         r'date:\s*new\s+Date\((\d{4}),\s*(\d{1,2}),\s*(\d{1,2})\)[^}]*?Rate:\s*([0-9]+(?:\.[0-9]+)?)',
-        blob
+        blob,
     )
 
     if entries:
@@ -146,7 +153,6 @@ def scrape_fund_data(fund):
     # 1. Pontos árfolyam és dátum kinyerése a chartData tömbből
     price_val, date_val = extract_chart_data(raw_html)
 
-    # Ha a dátum nem jött volna át a chartból, fallback a szövegből
     if not date_val:
         date_match = re.search(r"\b(20\d{2}[.-]\d{2}[.-]\d{2})\b", page_text)
         date_val = date_match.group(1).replace("-", ".") if date_match else None
@@ -185,6 +191,72 @@ def scrape_fund_data(fund):
     }
 
 
+def fetch_active_units():
+    try:
+        res = requests.get(
+            f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}/latest",
+            headers={"X-Master-Key": JSONBIN_API_KEY},
+            timeout=15,
+        )
+        if res.status_code == 200:
+            data = res.json()
+            return data.get("record", DEFAULT_UNITS)
+    except Exception as e:
+        print(f"JSONBin lekérési figyelmeztetés: {e}")
+    return DEFAULT_UNITS
+
+
+def update_history(results):
+    """
+    Kiszámítja az aktuális összértéket, és bejegyzi a history.json-ba dátum szerint.
+    """
+    units = fetch_active_units()
+    price_map = {f["id"]: f["price"] for f in results if f.get("price") is not None}
+
+    # Legfrissebb dátum keresése az alapok között
+    dates = [f["date"] for f in results if f.get("date")]
+    current_date = sorted(dates)[-1] if dates else "Ismeretlen"
+
+    total_huf = 0
+    for fund_id, unit_count in units.items():
+        p = price_map.get(fund_id)
+        if p:
+            total_huf += float(unit_count) * float(p)
+
+    if total_huf <= 0:
+        print("A portfólió összértéke 0 maradt, history nem frissült.")
+        return
+
+    total_huf_rounded = round(total_huf)
+    print(f"Portfólió aktuális összértéke: {total_huf_rounded:,} HUF ({current_date})")
+
+    history = []
+    if HISTORY_FILE.exists():
+        try:
+            history = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            history = []
+
+    # Ellenőrizzük, hogy erre a dátumra van-e már bejegyzés
+    existing_idx = next((i for i, h in enumerate(history) if h.get("date") == current_date), None)
+    if existing_idx is not None:
+        history[existing_idx]["value"] = total_huf_rounded
+    else:
+        history.append({
+            "date": current_date,
+            "value": total_huf_rounded
+        })
+
+    # Dátum szerint növekvő sorrendbe rendezés
+    history.sort(key=lambda x: x["date"].replace("-", "").replace(".", ""))
+
+    HISTORY_FILE.write_text(
+        json.dumps(history, ensure_ascii=False, indent=2),
+        encoding="utf-8"
+    )
+    print("Sikeresen rögzítve a history.json-ba.")
+
+
 def main():
     print("Eszközalapok linkjeinek felderítése...")
     fund_list = discover_fund_urls()
@@ -203,7 +275,10 @@ def main():
         json.dumps(results, ensure_ascii=False, indent=2),
         encoding="utf-8"
     )
-    print("Sikeres futás: funds.json elmentve valós árfolyamokkal.")
+    print("Sikeres futás: funds.json elmentve.")
+
+    # Portfólió vagyongörbe történetének frissítése
+    update_history(results)
 
 
 if __name__ == "__main__":
