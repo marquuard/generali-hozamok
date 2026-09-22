@@ -99,7 +99,7 @@
     "id": "fenntarthato",
     "name": "Fenntartható Világ részvény eszközalap",
     "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/fenntarthatovilagreszvenyeszkozalap.aspx",
-    "date": "2023.02.27",
+    "date": "2026.01.26",
     "ytd": 3.5,
     "price": null
   },
@@ -123,9 +123,9 @@
     "id": "kotveny-2027m",
     "name": "Kötvény 2027/M árfolyamvédett eszközalap",
     "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/kotveny2027meszkozalap.aspx",
-    "date": "2026.01.26",
+    "date": "2026.05.04",
     "ytd": null,
-    "price": 2026.0
+    "price": 1.08838
   },
   {
     "id": "magyar-piac",
