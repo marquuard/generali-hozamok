@@ -130,7 +130,6 @@
       color: var(--accent);
     }
 
-    /* Portfólió vagyongörbe konténer */
     .history-chart-card {
       background: var(--item-bg);
       border: 1px solid var(--border);
@@ -611,34 +610,37 @@
       text-align: center;
     }
 
-    /* DMCA Lábléc Stílus */
+    /* DMCA Végleges SVG Lábléc Stílus */
     .dmca-footer-wrap {
       margin-top: 35px;
-      padding-top: 18px;
+      padding-top: 20px;
       border-top: 1px solid var(--border);
       text-align: center;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 6px;
     }
 
-    .dmca-badge {
-      display: inline-block;
+    .dmca-badge-link {
+      display: inline-flex;
+      align-items: center;
       text-decoration: none;
-      line-height: 1;
+      transition: transform .15s ease, opacity .15s ease;
     }
 
-    .dmca-badge img {
+    .dmca-badge-link:hover {
+      transform: translateY(-1px);
+      opacity: 0.9;
+    }
+
+    .dmca-badge-svg {
       display: block;
       width: 150px;
       height: 30px;
-      transition: opacity .2s ease;
-    }
-
-    .dmca-badge img:hover {
-      opacity: 0.85;
+      border-radius: 4px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.15);
     }
 
     #imageModal {
@@ -892,10 +894,16 @@
 
       </div>
 
-      <!-- DMCA Védelem Lábléc (Közvetlen HTTPS hivatkozás és fix méret) -->
+      <!-- DMCA Védelem Lábléc: Beágyazott natív SVG, semmilyen AdBlocker nem tiltja -->
       <div class="dmca-footer-wrap">
-        <a href="https://www.dmca.com/Protection/Status.aspx?ID=913f51b3-7e51-476e-aa0e-401367052aa5" title="DMCA.com Protection Status" class="dmca-badge" target="_blank" rel="noopener noreferrer">
-          <img src="https://images.dmca.com/Badges/dmca-badge-w150-5x1-06.png?ID=913f51b3-7e51-476e-aa0e-401367052aa5" alt="DMCA.com Protection Status" width="150" height="30" />
+        <a href="https://www.dmca.com/Protection/Status.aspx?ID=913f51b3-7e51-476e-aa0e-401367052aa5" title="DMCA.com Protection Status" class="dmca-badge-link" target="_blank" rel="noopener noreferrer">
+          <svg class="dmca-badge-svg" viewBox="0 0 150 30" width="150" height="30" xmlns="http://www.w3.org/2000/svg">
+            <rect width="52" height="30" fill="#2d3339" rx="3" ry="3"/>
+            <rect x="52" width="98" height="30" fill="#00a884" rx="3" ry="3"/>
+            <rect x="49" width="6" height="30" fill="#2d3339"/>
+            <text x="7" y="20" fill="#ffffff" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="900" letter-spacing="0.5">DMCA</text>
+            <text x="59" y="20" fill="#ffffff" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.5" font-weight="700" letter-spacing="0.8">PROTECTED</text>
+          </svg>
         </a>
       </div>
     </section>
@@ -917,9 +925,6 @@
   </div>
 
   <button id="themeToggle" type="button" aria-label="Dark mode" title="Dark mode"></button>
-
-  <!-- DMCA Segédszkript HTTPS-sel -->
-  <script src="https://images.dmca.com/Badges/DMCABadgeHelper.min.js"></script>
 
   <script>
     const JSONBIN_BIN_ID = "6aab1846ac6210605ad64a79"; 
