@@ -772,7 +772,7 @@
         <div id="totalPortfolioHuf" class="total-portfolio-value">Számítás...</div>
       </div>
 
-      <!-- ÚJ: Portfólió-érték történet diagram -->
+      <!-- Portfólió-érték történet diagram -->
       <div id="historyCard" class="history-chart-card" style="display: none;">
         <div class="history-header">
           <span class="history-title">📈 Portfólió vagyongörbe</span>
@@ -1121,7 +1121,6 @@
       });
     }
 
-    // Vagyongörbe kirajzolása Chart.js-sel
     function renderPortfolioHistoryChart() {
       if (!portfolioHistory || portfolioHistory.length === 0) {
         historyCard.style.display = "none";
@@ -1133,7 +1132,6 @@
       const labels = portfolioHistory.map(h => h.date);
       const dataPoints = portfolioHistory.map(h => h.value);
 
-      // Változás számítása az első és utolsó pont között
       if (portfolioHistory.length >= 2) {
         const firstVal = portfolioHistory[0].value;
         const lastVal = portfolioHistory[portfolioHistory.length - 1].value;
@@ -1259,9 +1257,8 @@
       if (maxAbsValue === 0) maxAbsValue = 1;
 
       const sorted = [...funds].sort((a, b) => {
-        if (currentSortColumn === "name") {
-          return currentSortAsc ? a.name.localeCompare(b.name, "hu") : b.name.localeCompare(a.name, "hu");
-        } else if (currentSortColumn === "ytd") {
+        if (currentSortColumn === "name") return currentSortAsc ? a.name.localeCompare(b.name, "hu") : b.name.localeCompare(a.name, "hu");
+        if (currentSortColumn === "ytd") {
           const vA = formatReturnValue(a.ytd).val;
           const vB = formatReturnValue(b.ytd).val;
           return currentSortAsc ? vA - vB : vB - vA;
@@ -1313,7 +1310,8 @@
         tr.addEventListener("click", () => {
           fundSelect.value = fund.id;
           showFund(fund);
-          window.scrollTo({ top: 0, behavior: "smooth" });
+          // A százalékos YTD hozam elemre görget finoman a képernyő közepére
+          returnValue.scrollIntoView({ behavior: "smooth", block: "center" });
         });
 
         fundsTableBody.appendChild(tr);
@@ -1471,7 +1469,6 @@
 
     loadLastWorkflowRun();
 
-    // Párhuzamos adatbetöltés: funds.json + portfolio.json + cloudUnits + history.json
     Promise.all([
       fetch("funds.json", { cache: "no-store" }).then(r => r.json()),
       fetch("portfolio.json", { cache: "no-store" }).then(r => r.json()),
