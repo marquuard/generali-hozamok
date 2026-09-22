@@ -611,6 +611,26 @@
       text-align: center;
     }
 
+    /* DMCA Lábléc Stílus */
+    .dmca-footer-wrap {
+      margin-top: 30px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dmca-badge img {
+      transition: opacity .2s ease;
+    }
+
+    .dmca-badge img:hover {
+      opacity: 0.85;
+    }
+
     #imageModal {
       display: none;
       position: fixed;
@@ -861,6 +881,13 @@
         </div>
 
       </div>
+
+      <!-- DMCA Védelem Lábléc -->
+      <div class="dmca-footer-wrap">
+        <a href="//www.dmca.com/Protection/Status.aspx?ID=913f51b3-7e51-476e-aa0e-401367052aa5" title="DMCA.com Protection Status" class="dmca-badge" target="_blank" rel="noopener noreferrer">
+          <img src="https://images.dmca.com/Badges/dmca-badge-w150-5x1-06.png?ID=913f51b3-7e51-476e-aa0e-401367052aa5" alt="DMCA.com Protection Status" />
+        </a>
+      </div>
     </section>
   </main>
 
@@ -880,6 +907,9 @@
   </div>
 
   <button id="themeToggle" type="button" aria-label="Dark mode" title="Dark mode"></button>
+
+  <!-- DMCA Segédszkript -->
+  <script src="https://images.dmca.com/Badges/DMCABadgeHelper.min.js"></script>
 
   <script>
     const JSONBIN_BIN_ID = "6aab1846ac6210605ad64a79"; 
@@ -1310,7 +1340,6 @@
         tr.addEventListener("click", () => {
           fundSelect.value = fund.id;
           showFund(fund);
-          // A százalékos YTD hozam elemre görget finoman a képernyő közepére
           returnValue.scrollIntoView({ behavior: "smooth", block: "center" });
         });
 
