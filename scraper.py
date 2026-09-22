@@ -11,12 +11,6 @@ MAIN_URL = (
     "befektetesek/eszkozalapjaink.aspx"
 )
 
-# A Generali hivatalos, publikus napi árfolyamtáblázata
-ARFOLYAMOK_URL = (
-    "https://www.generali.hu/ugyfelszolgalat/informaciok/"
-    "befektetesek/arfolyamok.aspx"
-)
-
 OUTPUT_FILE = Path("funds.json")
 
 HEADERS = {
@@ -24,8 +18,7 @@ HEADERS = {
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/124.0.0.0 Safari/537.36"
-    ),
-    "Accept-Language": "hu-HU,hu;q=0.9,en-US;q=0.8,en;q=0.7",
+    )
 }
 
 FUNDS = [
@@ -83,44 +76,6 @@ def parse_hungarian_float(val_str):
     return None
 
 
-def fetch_official_prices():
-    """
-    Közvetlenül a Generali központi Árfolyamok oldaláról olvassa ki a hivatalos záróárakat.
-    """
-    prices = {}
-    latest_date = None
-
-    try:
-        resp = requests.get(ARFOLYAMOK_URL, headers=HEADERS, timeout=25)
-        if resp.status_code == 200:
-            soup = BeautifulSoup(resp.text, "html.parser")
-
-            # Dátum keresése a fejlécben
-            date_match = re.search(r"\b(20\d{2}[.-]\d{2}[.-]\d{2})\b", resp.text)
-            if date_match:
-                latest_date = date_match.group(1).replace("-", ".")
-
-            # Táblázatsorok átfésülése
-            for tr in soup.find_all("tr"):
-                row_text = clean(tr.get_text(" ", strip=True))
-                row_norm = norm(row_text)
-
-                for fund_id, name in FUNDS:
-                    if norm(name) in row_norm:
-                        tds = tr.find_all(["td", "th"])
-                        # Általában az utolsó előtti vagy utolsó oszlop a HUF árfolyam
-                        for td in reversed(tds):
-                            txt = clean(td.get_text(strip=True))
-                            val = parse_hungarian_float(txt)
-                            if val is not None and 0.1 < val < 500000:
-                                prices[fund_id] = val
-                                break
-    except Exception as e:
-        print(f"Hiba a központi árfolyamok lekérésekor: {e}")
-
-    return prices, latest_date
-
-
 def discover_fund_urls():
     response = requests.get(MAIN_URL, headers=HEADERS, timeout=30)
     response.raise_for_status()
@@ -148,7 +103,39 @@ def discover_fund_urls():
     return [found[fund_id] for fund_id, _ in FUNDS]
 
 
-def scrape_fund_details(fund, fallback_price, default_date):
+def extract_chart_data(raw_html):
+    """
+    Kifejezetten a Generali chartData tömbjéből nyeri ki a legutolsó
+    Rate (árfolyam) és date (new Date) értékeket.
+    Formátum:
+    {date:new Date(2026, 8, 17),Rate:2.13471,NetAssetValue:18764076672.00}
+    """
+    chart_price = None
+    chart_date = None
+
+    # Megkeressük a chartData tömböt
+    match = re.search(r'var\s+chartData\s*=\s*\[(.*?)\];', raw_html, re.DOTALL)
+    blob = match.group(1) if match else raw_html
+
+    # Kinyerjük a Date és Rate párokat
+    # A JS hónapok 0-tól indulnak (0 = Január, 8 = Szeptember), ezért +1
+    entries = re.findall(
+        r'date:\s*new\s+Date\((\d{4}),\s*(\d{1,2}),\s*(\d{1,2})\)[^}]*?Rate:\s*([0-9]+(?:\.[0-9]+)?)',
+        blob
+    )
+
+    if entries:
+        last_entry = entries[-1]
+        year = last_entry[0]
+        month = int(last_entry[1]) + 1
+        day = int(last_entry[2])
+        chart_date = f"{year}.{month:02d}.{day:02d}"
+        chart_price = float(last_entry[3])
+
+    return chart_price, chart_date
+
+
+def scrape_fund_data(fund):
     response = requests.get(fund["url"], headers=HEADERS, timeout=30)
     response.raise_for_status()
 
@@ -156,27 +143,15 @@ def scrape_fund_details(fund, fallback_price, default_date):
     soup = BeautifulSoup(raw_html, "html.parser")
     page_text = soup.get_text(" ", strip=True)
 
-    price_val = fallback_price
-    date_val = default_date
+    # 1. Pontos árfolyam és dátum kinyerése a chartData tömbből
+    price_val, date_val = extract_chart_data(raw_html)
 
-    # 1. Ha a központi táblából nem jött árfolyam, megkeressük az oldalon lévő amCharts chart vagy handler hívást
-    if price_val is None:
-        # Minden szám, ami 4-6 tizedesjegyű lebegőpontos szám a HTML szövegben (pl. 2,13471)
-        matches = re.findall(r"(\d+[.,]\d{4,6})", page_text)
-        if matches:
-            for m in matches:
-                val = parse_hungarian_float(m)
-                if val and 0.5 < val < 10000:
-                    price_val = val
-                    break
-
-    # 2. Dátum kinyerése az aloldalról
+    # Ha a dátum nem jött volna át a chartból, fallback a szövegből
     if not date_val:
-        dates = re.findall(r"\b(20\d{2}[.-]\d{2}[.-]\d{2})\b", page_text)
-        if dates:
-            date_val = sorted([d.replace("-", ".") for d in dates])[-1]
+        date_match = re.search(r"\b(20\d{2}[.-]\d{2}[.-]\d{2})\b", page_text)
+        date_val = date_match.group(1).replace("-", ".") if date_match else None
 
-    # 3. YTD hozam kinyerése
+    # 2. YTD hozam kinyerése
     ytd_val = None
     for tr in soup.find_all("tr"):
         row_text = clean(tr.get_text(" ", strip=True))
@@ -211,29 +186,24 @@ def scrape_fund_details(fund, fallback_price, default_date):
 
 
 def main():
-    print("1. Hivatalos napi árfolyamok lekérése a Generali központi oldaláról...")
-    official_prices, global_date = fetch_official_prices()
-    print(f"   -> {len(official_prices)} darab alap árfolyama sikeresen leolvasva.")
-
-    print("2. Eszközalap linkek felderítése...")
+    print("Eszközalapok linkjeinek felderítése...")
     fund_list = discover_fund_urls()
 
     results = []
     for i, fund in enumerate(fund_list, 1):
-        print(f"[{i}/18] Adatok kinyerése: {fund['name']}...")
-        preset_price = official_prices.get(fund["id"])
-        data = scrape_fund_details(fund, preset_price, global_date)
+        print(f"[{i}/18] Adatok lekérése: {fund['name']}...")
+        data = scrape_fund_data(fund)
         print(f"       -> Árfolyam: {data['price']} HUF | YTD: {data['ytd']}% | Dátum: {data['date']}")
         results.append(data)
 
     if len(results) != 18:
-        raise RuntimeError("Nem sikerült mind a 18 alapot feldolgozni.")
+        raise RuntimeError("Nem sikerült mind a 18 alapot lekérni.")
 
     OUTPUT_FILE.write_text(
         json.dumps(results, ensure_ascii=False, indent=2),
         encoding="utf-8"
     )
-    print("\nSikeres futás: funds.json frissítve az aktuális árfolyamokkal!")
+    print("Sikeres futás: funds.json elmentve valós árfolyamokkal.")
 
 
 if __name__ == "__main__":
