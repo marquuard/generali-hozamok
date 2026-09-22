@@ -165,11 +165,13 @@
       border-radius: 12px;
       background: var(--item-bg);
       padding: 14px 16px;
+      overflow-x: auto;
     }
 
+    /* 5 oszlop: Név | Nettó eszközérték | Darabszám | Érték (HUF) | Súly (%) */
     .portfolio-grid-header {
       display: grid;
-      grid-template-columns: 2fr 1fr 1fr 1fr;
+      grid-template-columns: 2fr 1.1fr 1fr 1.2fr 0.8fr;
       font-size: 11px;
       text-transform: uppercase;
       letter-spacing: .05em;
@@ -177,15 +179,17 @@
       padding-bottom: 8px;
       border-bottom: 1px solid var(--border);
       font-weight: 600;
+      min-width: 520px;
     }
 
     .my-portfolio-row {
       display: grid;
-      grid-template-columns: 2fr 1fr 1fr 1fr;
+      grid-template-columns: 2fr 1.1fr 1fr 1.2fr 0.8fr;
       align-items: center;
       padding: 10px 0;
       border-bottom: 1px solid var(--border);
       font-size: 14px;
+      min-width: 520px;
     }
 
     .my-portfolio-row:last-child {
@@ -198,7 +202,11 @@
 
     .portfolio-units {
       color: var(--muted);
-      font-size: 12px;
+      font-size: 13px;
+    }
+
+    .portfolio-price {
+      font-weight: 600;
     }
 
     .text-right {
@@ -208,7 +216,7 @@
     .portfolio-actions {
       display: flex;
       justify-content: flex-end;
-      margin-top: 12px;
+      margin-top: 14px;
     }
 
     .btn-edit-units {
@@ -706,14 +714,6 @@
 
       h1 { font-size: 21px; }
       #returnValue { font-size: 38px; }
-
-      .portfolio-grid-header,
-      .my-portfolio-row {
-        grid-template-columns: 1.6fr 1fr 1fr;
-      }
-      .col-hide-mobile {
-        display: none;
-      }
     }
   </style>
 </head>
@@ -728,7 +728,7 @@
       </div>
 
       <div class="total-portfolio-card">
-        <div class="total-portfolio-label">Saját portfólió becsült aktuális értéke</div>
+        <div class="total-portfolio-label">Saját portfólió aktuális értéke</div>
         <div id="totalPortfolioHuf" class="total-portfolio-value">Számítás...</div>
       </div>
 
@@ -740,7 +740,8 @@
         <div id="myPortfolioList" class="my-portfolio-list">
           <div class="portfolio-grid-header">
             <div>Eszközalap</div>
-            <div class="text-right col-hide-mobile">Egységek (db)</div>
+            <div class="text-right">Nettó eszközérték</div>
+            <div class="text-right">Darabszám</div>
             <div class="text-right">Érték (HUF)</div>
             <div class="text-right">Súly (%)</div>
           </div>
@@ -832,7 +833,6 @@
   <script>
     // ==========================================
     // ⚙️ FELHŐ-SZINKRONIZÁCIÓ BEÁLLÍTÁSA
-    // Másold be ide a jsonbin.io adataidat:
     // ==========================================
     const JSONBIN_BIN_ID = "6aab1846ac6210605ad64a79"; 
     const JSONBIN_API_KEY = "$2a$10$.wAFrVJnX1moDh4euoeNHeKCtJcmocpcCp07W8Q1aXqirBfMKGslu"; 
@@ -874,7 +874,7 @@
     let currentSortColumn = "ytd";
     let currentSortAsc = false;
 
-    // Alapértelmezett darabszámok arra az esetre, ha a felhőkapcsolat még nincs beállítva
+    // Alapértelmezett darabszámok fallbackként
     let activeUnits = {
       "tallozo": 114542.676,
       "horizont-10": 207670.400,
@@ -882,7 +882,7 @@
       "innovacio": 152078.356
     };
 
-    // Darabszámok lekérése a központi felhőből
+    // Darabszámok lekérése a felhőből
     async function fetchCloudUnits() {
       if (!JSONBIN_BIN_ID || JSONBIN_BIN_ID.includes("IDE_MASOLD")) {
         return activeUnits;
@@ -900,7 +900,7 @@
       }
     }
 
-    // Új darabszámok felküldése a felhőbe (bármilyen eszközről elérhető lesz)
+    // Új darabszámok mentése a felhőbe
     async function saveCloudUnits(newUnits) {
       if (!JSONBIN_BIN_ID || JSONBIN_BIN_ID.includes("IDE_MASOLD")) {
         activeUnits = newUnits;
@@ -974,6 +974,11 @@
       return Math.round(val).toLocaleString("hu-HU") + " Ft";
     }
 
+    function formatPrice(val) {
+      if (val === null || val === undefined) return "–";
+      return val.toFixed(4).replace(".", ",") + " Ft";
+    }
+
     function normalize(text) {
       return String(text || "")
         .normalize("NFD")
@@ -1031,35 +1036,30 @@
       myPortfolioBtn.classList.toggle("open", isClosed);
     });
 
+    // Portfólió értékének és bontásának kiszámítása
     function renderMyPortfolio(fundList) {
       myPortfolioRows.innerHTML = "";
 
       let grandTotalHuf = 0;
       const portfolioItems = [];
 
-      const fallbackPrices = {
-        "tallozo": 2.1257,
-        "horizont-10": 1.8556,
-        "hazai-reszveny": 4.0719,
-        "innovacio": 3.2045
-      };
-
       Object.keys(activeUnits).forEach(fundId => {
         const units = activeUnits[fundId] || 0;
-        const fund = fundList.find(f => f.id === fundId) || { name: fundId, ytd: "0%", price: null };
-        const price = fund.price || fallbackPrices[fundId] || 1.0;
+        const fund = fundList.find(f => f.id === fundId) || { name: fundId, price: null };
+        const price = fund.price !== null && fund.price !== undefined ? fund.price : 0;
         const valueHuf = units * price;
         grandTotalHuf += valueHuf;
 
         portfolioItems.push({
           id: fundId,
           name: fund.name,
+          price: fund.price,
           units: units,
           valueHuf: valueHuf
         });
       });
 
-      totalPortfolioHuf.textContent = formatHuf(grandTotalHuf);
+      totalPortfolioHuf.textContent = grandTotalHuf > 0 ? formatHuf(grandTotalHuf) : "Árfolyamadatok lekérése...";
       portfolioItems.sort((a, b) => b.valueHuf - a.valueHuf);
 
       portfolioItems.forEach(item => {
@@ -1071,7 +1071,8 @@
           <div>
             <div class="portfolio-fund-title">${item.name}</div>
           </div>
-          <div class="text-right portfolio-units col-hide-mobile">${Math.round(item.units).toLocaleString("hu-HU")} db</div>
+          <div class="text-right portfolio-price">${formatPrice(item.price)}</div>
+          <div class="text-right portfolio-units">${Math.round(item.units).toLocaleString("hu-HU")} db</div>
           <div class="text-right" style="font-weight: 700;">${formatHuf(item.valueHuf)}</div>
           <div class="text-right" style="color: var(--muted); font-size: 13px;">${weightPercent}%</div>
         `;
