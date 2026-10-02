@@ -1,7 +1,9 @@
 import json
 import re
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import urljoin
+from zoneinfo import ZoneInfo
 
 import requests
 from bs4 import BeautifulSoup
@@ -14,7 +16,6 @@ MAIN_URL = (
 OUTPUT_FILE = Path("funds.json")
 HISTORY_FILE = Path("history.json")
 
-# JSONBin beállítások a darabszámok lekéréséhez az összérték számításához
 JSONBIN_BIN_ID = "6aab1846ac6210605ad64a79"
 JSONBIN_API_KEY = "$2a$10$.wAFrVJnX1moDh4euoeNHeKCtJcmocpcCp07W8Q1aXqirBfMKGslu"
 
@@ -116,10 +117,6 @@ def discover_fund_urls():
 
 
 def extract_chart_data(raw_html):
-    """
-    Kifejezetten a Generali chartData tömbjéből nyeri ki a legutolsó
-    Rate (árfolyam) és date (new Date) értékeket.
-    """
     chart_price = None
     chart_date = None
 
@@ -150,14 +147,12 @@ def scrape_fund_data(fund):
     soup = BeautifulSoup(raw_html, "html.parser")
     page_text = soup.get_text(" ", strip=True)
 
-    # 1. Pontos árfolyam és dátum kinyerése a chartData tömbből
     price_val, date_val = extract_chart_data(raw_html)
 
     if not date_val:
         date_match = re.search(r"\b(20\d{2}[.-]\d{2}[.-]\d{2})\b", page_text)
         date_val = date_match.group(1).replace("-", ".") if date_match else None
 
-    # 2. YTD hozam kinyerése
     ytd_val = None
     for tr in soup.find_all("tr"):
         row_text = clean(tr.get_text(" ", strip=True))
@@ -207,15 +202,14 @@ def fetch_active_units():
 
 
 def update_history(results):
-    """
-    Kiszámítja az aktuális összértéket, és bejegyzi a history.json-ba dátum szerint.
-    """
     units = fetch_active_units()
     price_map = {f["id"]: f["price"] for f in results if f.get("price") is not None}
 
-    # Legfrissebb dátum keresése az alapok között
-    dates = [f["date"] for f in results if f.get("date")]
-    current_date = sorted(dates)[-1] if dates else "Ismeretlen"
+    try:
+        now_bp = datetime.now(ZoneInfo("Europe/Budapest"))
+    except Exception:
+        now_bp = datetime.now()
+    today_str = now_bp.strftime("%Y.%m.%d")
 
     total_huf = 0
     for fund_id, unit_count in units.items():
@@ -224,37 +218,41 @@ def update_history(results):
             total_huf += float(unit_count) * float(p)
 
     if total_huf <= 0:
-        print("A portfólió összértéke 0 maradt, history nem frissült.")
+        print("A portfólió összértéke 0 maradt, a history nem frissült.")
         return
 
     total_huf_rounded = round(total_huf)
-    print(f"Portfólió aktuális összértéke: {total_huf_rounded:,} HUF ({current_date})")
+    print(f"\n--- Portfólió történet frissítése ---")
+    print(f"Dátum: {today_str} | Érték: {total_huf_rounded:,} HUF")
 
     history = []
     if HISTORY_FILE.exists():
         try:
             history = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
-        except Exception:
+            if not isinstance(history, list):
+                history = []
+        except Exception as e:
+            print(f"History beolvasási figyelmeztetés: {e}")
             history = []
 
-    # Ellenőrizzük, hogy erre a dátumra van-e már bejegyzés
-    existing_idx = next((i for i, h in enumerate(history) if h.get("date") == current_date), None)
+    existing_idx = next((i for i, h in enumerate(history) if h.get("date") == today_str), None)
     if existing_idx is not None:
         history[existing_idx]["value"] = total_huf_rounded
+        print(f"A mai nap ({today_str}) értéke frissítve lett.")
     else:
         history.append({
-            "date": current_date,
+            "date": today_str,
             "value": total_huf_rounded
         })
+        print(f"Új naptári bejegyzés ({today_str}) hozzáadva.")
 
-    # Dátum szerint növekvő sorrendbe rendezés
-    history.sort(key=lambda x: x["date"].replace("-", "").replace(".", ""))
+    history.sort(key=lambda x: str(x.get("date", "")).replace("-", "").replace(".", ""))
 
     HISTORY_FILE.write_text(
         json.dumps(history, ensure_ascii=False, indent=2),
         encoding="utf-8"
     )
-    print("Sikeresen rögzítve a history.json-ba.")
+    print(f"Összesen {len(history)} pont található a history.json-ban.")
 
 
 def main():
@@ -277,7 +275,6 @@ def main():
     )
     print("Sikeres futás: funds.json elmentve.")
 
-    # Portfólió vagyongörbe történetének frissítése
     update_history(results)
 
 
