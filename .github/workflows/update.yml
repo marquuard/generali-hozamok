@@ -10,6 +10,7 @@ on:
     branches: [main]
     paths-ignore:
       - "funds.json"
+      - "history.json"
       - "portfolio.json"
       - "portfolio_images/**"
       - ".portfolio_initialized_v5"
@@ -107,7 +108,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add funds.json portfolio.json portfolio_images .portfolio_initialized_v5
+          git add funds.json history.json portfolio.json portfolio_images .portfolio_initialized_v5
           if git diff --cached --quiet; then
             echo "Nincs mentendő változás."
           else
