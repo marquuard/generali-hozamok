@@ -3,144 +3,144 @@
     "id": "penzpiaci-2016",
     "name": "Pénzpiaci 2016 eszközalap",
     "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/penzpiaci2016eszkozalap.aspx",
-    "date": "2026.11.09",
-    "ytd": 5.19,
-    "price": 1.46195
+    "date": "2026.11.10",
+    "ytd": 5.2,
+    "price": 1.46217
   },
   {
     "id": "hazai-kotveny",
     "name": "Hazai kötvény eszközalap",
     "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/hazaikotvenyeszkozalap.aspx",
-    "date": "2026.11.09",
-    "ytd": 10.43,
-    "price": 1.39911
+    "date": "2026.11.10",
+    "ytd": 10.39,
+    "price": 1.39858
   },
   {
     "id": "tallozo",
     "name": "Tallózó abszolút hozam eszközalap",
     "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/tallozoabszoluthozameszkozalap.aspx",
-    "date": "2026.11.09",
-    "ytd": 11.92,
-    "price": 2.13712
+    "date": "2026.11.10",
+    "ytd": 11.73,
+    "price": 2.13351
   },
   {
     "id": "vilagjaro-kotveny",
     "name": "Világjáró kötvény eszközalap",
     "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/vilagjarokotvenyeszkozalap.aspx",
-    "date": "2026.11.09",
-    "ytd": -1.75,
-    "price": 1.41451
+    "date": "2026.11.10",
+    "ytd": -2.19,
+    "price": 1.40814
   },
   {
     "id": "horizont-15",
     "name": "Horizont 15+ vegyes eszközalap",
     "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/horizont15eszkozalap.aspx",
-    "date": "2026.11.09",
-    "ytd": 7.28,
-    "price": 2.15861
+    "date": "2026.11.10",
+    "ytd": 6.79,
+    "price": 2.14858
   },
   {
     "id": "horizont-10",
     "name": "Horizont 10+ vegyes eszközalap",
     "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/horizont10eszkozalap.aspx",
-    "date": "2026.11.09",
-    "ytd": 8.36,
-    "price": 1.87272
+    "date": "2026.11.10",
+    "ytd": 7.98,
+    "price": 1.86615
   },
   {
     "id": "horizont-5",
     "name": "Horizont 5+ vegyes eszközalap",
     "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/horizont5eszkozalap.aspx",
-    "date": "2026.11.09",
-    "ytd": 9.24,
-    "price": 1.63937
+    "date": "2026.11.10",
+    "ytd": 9.0,
+    "price": 1.63571
   },
   {
     "id": "hazai-reszveny",
     "name": "Hazai részvény eszközalap",
     "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/hazaireszvenyeszkozalap.aspx",
-    "date": "2026.11.09",
-    "ytd": 27.16,
-    "price": 3.96606
+    "date": "2026.11.10",
+    "ytd": 25.96,
+    "price": 3.92854
   },
   {
     "id": "fejlodo-vilag",
     "name": "Fejlődő világ részvény eszközalap",
     "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/fejlodovilagreszvenyeszkozalap.aspx",
-    "date": "2026.11.09",
-    "ytd": 8.46,
-    "price": 2.01871
+    "date": "2026.11.10",
+    "ytd": 7.63,
+    "price": 2.0034
   },
   {
     "id": "fejlett-vilag",
     "name": "Fejlett világ részvény eszközalap",
     "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/fejlettvilagreszvenyeszkozalap.aspx",
-    "date": "2026.11.09",
-    "ytd": 6.06,
-    "price": 2.60556
+    "date": "2026.11.10",
+    "ytd": 5.55,
+    "price": 2.59287
   },
   {
     "id": "vilagmarkak",
     "name": "Világmárkák részvény eszközalap",
     "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/vilagmarkakreszvenyeszkozalap.aspx",
-    "date": "2026.11.09",
-    "ytd": 6.99,
-    "price": 2.4874
+    "date": "2026.11.10",
+    "ytd": 6.62,
+    "price": 2.47891
   },
   {
     "id": "innovacio",
     "name": "Innováció részvény eszközalap",
     "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/innovacioreszvenyeszkozalap.aspx",
-    "date": "2026.11.09",
-    "ytd": 14.46,
-    "price": 3.09998
+    "date": "2026.11.10",
+    "ytd": 13.06,
+    "price": 3.06196
   },
   {
     "id": "fenntarthato",
     "name": "Fenntartható Világ részvény eszközalap",
     "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/fenntarthatovilagreszvenyeszkozalap.aspx",
-    "date": "2026.11.09",
-    "ytd": 5.32,
-    "price": 1.51237
+    "date": "2026.11.10",
+    "ytd": 5.3,
+    "price": 1.51205
   },
   {
     "id": "tudatos-fejlett",
     "name": "Tudatos fejlett piac részvény eszközalap",
     "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/tudatosfejlettpiacreszvenyeszkozalap.aspx",
-    "date": "2026.11.09",
-    "ytd": 6.45,
-    "price": 1.07004
+    "date": "2026.11.10",
+    "ytd": 5.65,
+    "price": 1.06207
   },
   {
     "id": "tavlat-fejlodo",
     "name": "TávLat fejlődő piac részvény eszközalap",
     "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/tavlatfejlodopiacreszvenyeszkozalap.aspx",
-    "date": "2026.11.09",
-    "ytd": 8.53,
-    "price": 1.10349
+    "date": "2026.11.10",
+    "ytd": 7.63,
+    "price": 1.09433
   },
   {
     "id": "kotveny-2027m",
     "name": "Kötvény 2027/M árfolyamvédett eszközalap",
     "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/kotveny2027meszkozalap.aspx",
-    "date": "2026.11.09",
+    "date": "2026.11.10",
     "ytd": null,
-    "price": 1.03135
+    "price": 1.03155
   },
   {
     "id": "magyar-piac",
     "name": "Magyar piac részvény eszközalap",
     "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/magyarpiacreszvenyeszkozalap.aspx",
-    "date": "2026.11.09",
+    "date": "2026.11.10",
     "ytd": null,
-    "price": 1.06422
+    "price": 1.05333
   },
   {
     "id": "nemzetkozi-markak",
     "name": "Nemzetközi márkák részvény eszközalap",
     "url": "https://www.generali.hu/ugyfelszolgalat/informaciok/befektetesek/eszkozalapjaink/nemzetkozimarkakpiacreszvenyeszkozalap.aspx",
-    "date": "2026.11.09",
+    "date": "2026.11.10",
     "ytd": null,
-    "price": 1.07561
+    "price": 1.07107
   }
 ]
